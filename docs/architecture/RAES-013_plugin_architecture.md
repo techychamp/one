@@ -98,6 +98,10 @@ class PluginContext:
     def register_adapter(self, name: str, adapter_cls: Type[BaseAdapter]): ...
     def register_profile_resolver(self, resolver: Callable): ...
     def register_execution_graph(self, graph: ExecutionGraph): ...
+    def register_optimization_pass(self, name: str, opt_pass: Any): ...
+    def register_verification_pass(self, name: str, ver_pass: Any): ...
+    def register_execution_ir_node(self, node_type: str, node_cls: Any): ...
+    def register_analysis_pass(self, name: str, analysis_pass: Any): ...
 ```
 
 This centralizes extension into a single lifecycle hook, ensuring all components adhere to the OMLX platform contracts without altering internal logic.
@@ -120,9 +124,9 @@ class PluginManifest:
     name: str                       # e.g., "omlx-nemotron"
     version: str                    # e.g., "1.0.0"
     author: str
-    dependencies: dict[str, str]    # e.g., {"omlx-core": ">=0.5.0"}
-    provided_capabilities: set[str] # e.g., {"diffusion_backend", "streaming_moe"}
-    hardware_requirements: set[str] # e.g., {"metal"}
+    provides: set[str]              # e.g., {"diffusion"}
+    requires: set[str]              # e.g., {"metal"}
+    extends: set[str]               # e.g., {"autoregressive"}
 ```
 
 ## 8. Runtime Context
@@ -171,7 +175,7 @@ External packages can safely extend OMLX using pip and Python entry points.
 
 ## 11. Security Analysis
 
-*   **Plugin Isolation:** Plugins run in the same Python process. Strict isolation (e.g., WASM) is unnecessary for an inference server, but standard Python module boundaries apply.
+*   **Plugin Isolation:** Currently, plugins run in the same Python process. Long-term, the architecture must consider isolation mechanisms such as `PluginProcess` or `SubprocessWorker` for experimental kernels. This is not strictly because Python plugins are unsafe, but because a native MLX core crash will bring down the entire process. A multiprocess architecture insulates the main server from experimental memory faults.
 *   **Validation:** Manifests are type-checked. Registration methods enforce `Protocol` checks.
 *   **Runtime Failures:** If a plugin's backend crashes, the specific request fails, but the global exception handlers in the FastAPI layer prevent the server from crashing.
 *   **Graceful Degradation:** A failed plugin load does not prevent OMLX from starting, unless the user explicitly flags the plugin as strictly required.
@@ -189,6 +193,17 @@ The following test suites must be developed in `tests/registry/test_plugin_archi
 ## 13. Rollback Strategy
 
 Because this architecture builds upon existing abstractions (`GenerationStrategyRegistry`, `ExecutionProfileRegistry`), it does not require breaking changes to existing built-in models. If the `plugin_manager.py` logic fails, the fallback is the current static initialization (which registers `autoregressive`, `diffusion`, etc. explicitly at startup). Built-in models will not depend on the dynamic discovery system to function.
+
+
+## 15. Event Hooks (Future Expansion)
+
+Eventually, plugins may need to interact with the runtime at distinct points in the request lifecycle rather than just registering static classes. The architecture should anticipate supporting:
+
+*   **Before Discovery:** Hooks executed before the model graph is fully discovered.
+*   **Before Planning:** Hooks altering the execution plan based on the request (e.g., triage overrides).
+*   **Before Execution:** Hooks executing immediately before `engine.execute_cycle()`.
+*   **After Execution:** Hooks for custom metric collection, cache updates, or logging.
+*   **Shutdown:** Safe teardown of external resources or worker processes.
 
 ## 14. Recommendation for implementation checkpoint
 
