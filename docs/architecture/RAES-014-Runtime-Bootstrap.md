@@ -75,6 +75,7 @@ sequenceDiagram
 
 ---
 
+
 ## 3. Runtime Composition Root
 
 To transition away from global singletons and scattered module-level instantiation, oMLX requires a formal **Composition Root**. This is a single, deterministic bootstrapping phase responsible for wiring all dependencies *before* the application serves traffic.
@@ -85,32 +86,36 @@ Nothing outside the Composition Root should perform service construction or depe
 
 ```mermaid
 graph TD
-    Bootstrap[CLI Bootstrap] --> Config[Configuration Manager]
-    Config --> PluginMgr[Plugin Manager]
-    PluginMgr --> CapReg[Capability Registry]
-    PluginMgr --> AdapReg[Adapter Registry]
-    CapReg --> ExecPlanner[Execution Planner]
-    AdapReg --> ExecPlanner
-    ExecPlanner --> ExecProfReg[Execution Profile Registry]
-    ExecProfReg --> Verification[Verification Framework]
-    Verification --> EngPool[Engine Pool]
-    EngPool --> Engine[Engine Core]
-    Engine --> Scheduler[Scheduler]
-    Scheduler --> Serve[Serve Requests]
+    Bootstrap[CLI Bootstrap] --> Builder[RuntimeBuilder]
+    Builder --> Runtime[Runtime]
+    Runtime --> Server[FastAPI Server]
 ```
 
-### The `RuntimeBuilder`
-The Composition Root should be encapsulated in a `RuntimeBuilder` or `OmlxApplication` class. It manages the strict initialization order:
-1. Load base configuration.
-2. Initialize Observability (Logging/Tracing).
-3. Discover and load Plugins.
-4. Populate Capability and Adapter Registries.
-5. Construct the Execution Planner.
-6. Initialize the Verification Framework.
-7. Construct the `EnginePool`, injecting the Planner and Registries.
-8. Mount the FastAPI app, injecting the built `EnginePool` as a dependency (rather than relying on global state).
+### The `Runtime` Object
+The `RuntimeBuilder` constructs a single `Runtime` object. This object acts as the ultimate application boundary and owns all primary subsystems:
+*   **RuntimeContext**: An aggregated state object encapsulating:
+    *   Configuration
+    *   Capabilities
+    *   Hardware Information
+    *   Plugins
+    *   Metrics
+    *   Execution Environment
+    *   Verification state
+    *   Execution Planner
+*   **EventBus**: The centralized publish-subscribe system. Plugins, Metrics, Verification, and Logging communicate across the system by subscribing to the EventBus, rather than through direct method invocation.
+*   **EnginePool**: Managing memory and models.
 
----
+```mermaid
+graph TD
+    Runtime --> RuntimeContext
+    Runtime --> EventBus
+    Runtime --> EnginePool
+
+    EventBus --> Plugins
+    EventBus --> Metrics
+    EventBus --> Verification
+    EventBus --> Logging
+```
 
 ## 4. Service Lifetime Model
 
@@ -210,6 +215,26 @@ sequenceDiagram
 
 ---
 
+
+
+## 6.5 Thread Ownership
+
+System concurrency is governed by explicit thread ownership to prevent deadlocks and data races:
+
+1.  **HTTP Thread (FastAPI/Uvicorn)**: Handles I/O, routing, and SSE connection keep-alives. Cannot block.
+2.  **Engine Thread (`EngineCore`)**: Manages the lifecycle of a specific model, runs the Scheduler loops, and triggers execution.
+3.  **MLX Thread (`mlx-lm`)**: The underlying C++/Metal execution thread. Must only be invoked from the Engine Thread to prevent `Stream` context collisions.
+4.  **Background Worker**: Handles asynchronous tasks like flushing SSD cache blocks and emitting telemetry.
+5.  **Metrics Thread**: Dedicated to aggregating and exporting Prometheus/logging data without interrupting inference.
+
+```mermaid
+graph TD
+    HTTP[HTTP Thread] -->|Yields| Engine[Engine Thread]
+    Engine -->|Delegates Compute| MLX[MLX Thread]
+    Engine -->|Async writes| Background[Background Worker]
+    All -->|Metrics| MetricsThread[Metrics Thread]
+```
+
 ## 7. Request Lifecycle
 
 The request lifecycle tracks a single inference request from the edge to the GPU and back.
@@ -252,20 +277,60 @@ sequenceDiagram
 
 ---
 
+
 ## 8. Startup & Shutdown Architecture
 
 Graceful startup and shutdown are critical for ensuring state consistency (e.g., SSD caching, memory boundaries) and allowing verification.
 
-### Startup & Warmup Sequence
-1.  **Configuration Parse**: Load `.env`, CLI args, and `settings.yaml`.
-2.  **Plugin Loading**: `PluginManager` discovers and initializes `.whl` or local plugins via entry points.
-3.  **Verification Initialization**: Verification profiles (Golden Assets) are loaded into memory.
-4.  **Model Discovery**: Scan `~/.cache/huggingface` and `~/.cache/omlx` for available models. Populate the Model Registry.
-5.  **Cache Creation**: Initialize the Memory Monitor and SSD Cache metadata files.
-6.  **Network Bind**: Uvicorn binds to the port and begins accepting requests.
-7.  **Warmup**: Pinned models are explicitly loaded into `EnginePool` to avoid first-request latency.
+### Runtime State Machine & Boot Phases
+
+The Runtime operates under a strict state machine lifecycle. This provides clear health endpoints and makes debugging boot failures trivial.
+
+```mermaid
+stateDiagram-v2
+    [*] --> CREATED
+    CREATED --> BOOTSTRAPPING
+    BOOTSTRAPPING --> CONFIGURATION
+    CONFIGURATION --> DISCOVERY
+    DISCOVERY --> REGISTRATION
+    REGISTRATION --> VALIDATION
+    VALIDATION --> INITIALIZING
+    INITIALIZING --> WARMING_UP
+    WARMING_UP --> READY
+    READY --> SERVING
+    SERVING --> DRAINING
+    DRAINING --> STOPPING
+    STOPPING --> STOPPED
+    STOPPED --> [*]
+
+    BOOTSTRAPPING --> FAILED
+    INITIALIZING --> FAILED
+```
+
+### Explicit Boot Phases
+1.  **BOOTSTRAP**: Application process starts.
+2.  **CONFIGURATION**: Load `.env`, CLI args, and `settings.yaml`.
+3.  **DISCOVERY**: `PluginManager` discovers `.whl` or local plugins via entry points. Scan models.
+4.  **REGISTRATION**: Registries are populated.
+5.  **VALIDATION**: Run startup validation checks.
+6.  **INITIALIZING**: Construct ExecutionPlanner, EnginePool, and Verification Framework.
+7.  **WARMING_UP**: Pinned models are explicitly loaded into `EnginePool`. Cache metadata initialized.
+8.  **READY**: All subsystems online.
+
+### Startup Validation
+Before transitioning from WARMING_UP to READY, the system must pass strict validation:
+*   [x] Configuration is valid.
+*   [x] Plugins successfully loaded.
+*   [x] Registries are locked and immutable.
+*   [x] Execution Planner is successfully built.
+*   [x] Verification framework initialized.
+*   [x] EnginePool initialized with zero zombie processes.
+*   [x] All pre-flight Health Checks passed.
+
+Only when these checks pass does the system transition to `READY` and allow Uvicorn to bind and transition to `SERVING`.
 
 ### Shutdown Sequence
+
 1.  **Signal Trap**: SIGINT/SIGTERM intercepted by Uvicorn.
 2.  **Network Drain**: Stop accepting new HTTP requests. Allow current requests N seconds to finish streaming.
 3.  **Worker Cleanup**: For every active `EngineCore`, signal the `Scheduler` to halt. Abort all remaining requests with a 503 Retry-After.
@@ -292,17 +357,32 @@ The `SettingsManager` (instantiated in the Composition Root) owns the unified vi
 
 ---
 
-## 10. Failure Recovery
 
-The Composition Root and Worker Lifecycles must be resilient to localized failures.
 
-*   **Plugin Load Failure**: Logged as an error, but the runtime boots gracefully. Only capabilities dependent on the failed plugin are disabled.
-*   **Model Load Failure**: The HTTP request fails with a 500 error. The `EnginePool` clears the faulty lease. The process remains alive.
-*   **Adapter Resolution Failure**: Raised gracefully before memory is allocated. Defaults to a generic "Unsupported Architecture" HTTP error.
-*   **Verification Failure**: Fails the boot sequence strictly if running in 'Strict Verification Mode'; otherwise, logs a warning.
-*   **Worker/Kernel Crash**: Caught by the `EnginePool` lease manager. The specific `EngineCore` is marked dead and removed from the pool. `mx.metal.clear_cache()` is aggressively called to attempt recovery. Subsequent requests will trigger a clean model reload.
+## 9.5 Hot Reload Policy
 
----
+To maintain high availability without restarting the process, specific components can be hot-reloaded:
+
+**Can Reload (Without Restart):**
+*   Plugins (Dynamically registered/unregistered)
+*   Capabilities (Re-evaluated upon plugin load)
+*   Verification Profiles (Golden assets re-read)
+*   Configuration (via Admin API / SIGHUP)
+
+**Cannot Reload (Requires Process Restart):**
+*   Execution Planner (Core wiring is static post-boot)
+*   Scheduler (Queue state cannot be safely hot-swapped)
+*   Execution Engine (Tied to MLX memory contexts)
+
+## 10. Failure Domains
+
+The system strictly formalizes failure boundaries to ensure maximum uptime and operational clarity. When a failure occurs, the blast radius is contained according to these rules:
+
+*   **Plugin Failure** → Disable the offending plugin → Log warning → Continue boot.
+*   **Verification Failure** → Abort boot process (prevents taking traffic in an unsafe state).
+*   **Model Failure** (e.g., OOM on load, corrupt safetensors) → Restart Engine → Return 500 to specific HTTP request.
+*   **Scheduler Failure** (e.g., queue corruption, deadlock) → Restart Engine → Requeue waiting requests if possible.
+*   **Runtime Failure** (e.g., EventBus panic, catastrophic metal error) → Terminate Process (let external orchestrator like systemd/Docker restart).
 
 ## 11. Observability Architecture
 
