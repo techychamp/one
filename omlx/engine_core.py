@@ -258,6 +258,64 @@ class EngineCore:
         self._start_time: Optional[float] = None
         self._steps_executed = 0
 
+        # Resolve capabilities, profile, and strategy independently
+        try:
+            from omlx.runtime.feature_flags import FeatureFlags
+            from omlx.runtime.capabilities import ActualCapabilities, EngineCapabilities, infer_capabilities
+            from omlx.registry.capability_registry import GenerationStrategyRegistry, register_default_strategies
+            from omlx.registry.plugin_discovery import discover_plugins
+            from omlx.registry.model_info import build_model_info
+            from omlx.inference.execution_profile import ExecutionContext, get_profile_registry
+
+            # 1. Infer model capabilities and resolve actual capabilities
+            model_caps = infer_capabilities(model=self.model, model_path=self.config.model_name)
+            flags = FeatureFlags.from_env()
+            engine_caps = EngineCapabilities()
+            actual_caps = ActualCapabilities.resolve(
+                model=model_caps,
+                engine=engine_caps,
+                flags=flags,
+            )
+
+            # 2. Build model info
+            base_model = getattr(self.model, "language_model", self.model)
+            model_info = build_model_info(
+                model_path=self.config.model_name or "dummy",
+                model=base_model,
+                tokenizer=self.tokenizer,
+                capabilities=model_caps,
+            )
+
+            # 3. Build ExecutionContext and resolve profile / backend factory
+            context = ExecutionContext(
+                model_info=model_info,
+                engine_capabilities=engine_caps,
+                feature_flags=flags,
+            )
+            profile_registry = get_profile_registry()
+            profile, backend_factory = profile_registry.resolve(context)
+
+            # 4. Instantiate ExecutionBackend
+            backend = backend_factory(profile, context)
+
+            # 5. Build strategy registry and resolve strategy
+            strat_registry = GenerationStrategyRegistry()
+            register_default_strategies(strat_registry)
+            discover_plugins(strat_registry)
+
+            mode = strat_registry.resolve_mode(actual_caps)
+            strategy_class = strat_registry.get_strategy_class(mode)
+
+            # 6. Instantiate and bind strategy to scheduler
+            strategy = strategy_class(scheduler=self.scheduler, backend=backend)
+            self.scheduler.set_strategy(strategy)
+            logger.info("Capability-driven generation strategy resolved and bound to Scheduler")
+        except Exception as e:
+            logger.warning(
+                f"Failed to independently resolve execution strategy during EngineCore initialization: {e}. "
+                "Continuing without a bound strategy."
+            )
+
         logger.debug(f"Engine {self._engine_id} initialized")
 
     async def start(self) -> None:

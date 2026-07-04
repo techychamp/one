@@ -63,8 +63,6 @@ class LinearSpeculationStrategy(BaseGenerationStrategy):
         state = RuntimeState()
         return ctx, state
 
-    def prefill(self, requests: list[GenerationRequest]) -> list[PrefillResult]:
-        return [PrefillResult(prompt_cache=None, cached_tokens=0) for _ in requests]
 
     def forward(self, requests: list[GenerationRequest]) -> list[ForwardResult]:
         raise NotImplementedError("Linear speculation forward not implemented yet.")

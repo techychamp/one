@@ -127,10 +127,6 @@ class AutoregressiveStrategy(BaseGenerationStrategy):
             sampling_params.repetition_penalty,
         )
 
-    def prefill(self, requests: list[GenerationRequest]) -> list[PrefillResult]:
-        """Phase 1: actual prefill logic lives in Scheduler."""
-        # The Scheduler still handles the actual insert for now, we just pass through.
-        return [PrefillResult(prompt_cache=None, cached_tokens=0) for _ in requests]
 
     def forward(self, requests: list[GenerationRequest]) -> list[ForwardResult]:
         """Phase 1.6b Pass 3: Thin wrapper around BatchGenerator."""

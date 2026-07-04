@@ -66,8 +66,14 @@ class DiffusionStrategy(BaseGenerationStrategy):
     def __init__(self, scheduler: Any = None, backend: Any = None) -> None:
         super().__init__(scheduler, backend)
 
-    def prefill(self, requests: list[GenerationRequest]) -> list[PrefillResult]:
-        return [PrefillResult(prompt_cache=None, cached_tokens=0) for _ in requests]
+    def prefill(
+        self,
+        model: Any,
+        inputs: Any,
+        cache: Any,
+        **kwargs: Any,
+    ) -> None:
+        raise NotImplementedError("Diffusion strategy does not support standard AR-style prefill.")
 
     def execute(self, command: Any) -> Any:
         from omlx.inference.execution_backend import ExecuteCycleCommand

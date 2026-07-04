@@ -56,6 +56,18 @@ class BaseGenerationStrategy(ABC):
 
     # --- Execution ---
     
+    def prefill(
+        self,
+        model: Any,
+        inputs: Any,
+        cache: Any,
+        **kwargs: Any,
+    ) -> None:
+        """Default prefill implementation for standard autoregressive/transformer models."""
+        import mlx.core as mx
+        model(inputs, cache=cache, **kwargs)
+        mx.eval([c.state for c in cache])
+
     @abstractmethod
     def execute(self, command: Any) -> None:
         """Execute a pipeline command."""

@@ -1875,6 +1875,13 @@ class Scheduler:
         # since _get_xtc_special_tokens() delegates to _get_stop_tokens().
         self._xtc_special_tokens: list[int] = self._get_xtc_special_tokens()
 
+        # Generation strategy reference (injected by EngineCore)
+        self.strategy: Any | None = None
+
+    def set_strategy(self, strategy: Any) -> None:
+        """Set the generation strategy to be used by the scheduler."""
+        self.strategy = strategy
+
     @contextmanager
     def _phase_timer(self, phase: str):
         """Lightweight wall-time accumulator for cache-on overhead diagnostics.
@@ -3028,8 +3035,11 @@ class Scheduler:
                     )
 
             _throttle_pre = get_phys_footprint()
-            self.model(input_arr[:, :n_to_process], cache=prompt_cache, **model_kwargs)
-            mx.eval([c.state for c in prompt_cache])
+            if self.strategy is not None:
+                self.strategy.prefill(self.model, input_arr[:, :n_to_process], cache=prompt_cache, **model_kwargs)
+            else:
+                self.model(input_arr[:, :n_to_process], cache=prompt_cache, **model_kwargs)
+                mx.eval([c.state for c in prompt_cache])
             _throttle_post = get_phys_footprint()
             self._record_chunk_transient(
                 n_to_process,
@@ -3997,8 +4007,11 @@ class Scheduler:
         chunk = state.tokens_remaining[:, :n]
         state.tokens_remaining = state.tokens_remaining[:, n:]
         _throttle_pre = get_phys_footprint()
-        self.model(chunk, cache=state.cache)
-        mx.eval([c.state for c in state.cache])
+        if self.strategy is not None:
+            self.strategy.prefill(self.model, chunk, cache=state.cache)
+        else:
+            self.model(chunk, cache=state.cache)
+            mx.eval([c.state for c in state.cache])
         _throttle_post = get_phys_footprint()
         self._record_chunk_transient(
             n,
