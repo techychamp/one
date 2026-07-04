@@ -1,2 +1,5 @@
-def plan_step_complete():
+def complete():
     print("Step Complete")
+
+if __name__ == "__main__":
+    complete()
