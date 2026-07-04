@@ -1,7 +1,7 @@
-# RAES-011: Execution Graph & Runtime Optimizer Architecture
+# RAES-011: Execution IR & Runtime Optimizer Architecture
 
 ## Objective
-Perform a complete repository audit and design a graph-based execution architecture that allows runtime execution to be represented as a directed acyclic graph (DAG) of execution stages. The architecture must support future optimization passes without changing Scheduler logic.
+Perform a complete repository audit and design an Intermediate Representation (IR) execution architecture that allows runtime execution to be modeled exactly like a compiler (e.g., LLVM). Execution will move through a continuous pipeline: Capability Resolver → Execution Planner → Execution IR → Optimization Pipeline → Execution Runtime. The architecture must support future optimization passes, graph rewriting, and node immutability without changing Scheduler logic.
 
 ---
 
@@ -47,19 +47,25 @@ BatchGenerator / Runtime
 Response
 ```
 
-**Comparison against Proposed Graph Architecture:**
-Currently, `ExecutionGraph` (in `omlx/inference/execution_graph.py`) defines a pseudo-graph using `GraphNode` (`next_nodes`), but traversal acts strictly linearly via `linear_order()`. The proposed architecture will replace `ExecutionPipeline`'s linear stage array with a true DAG evaluator capable of branching, dependency resolution, and node fusion.
+**Comparison against Proposed Execution IR:**
+Currently, `ExecutionGraph` (in `omlx/inference/execution_graph.py`) defines a pseudo-graph using `GraphNode` (`next_nodes`), but traversal acts strictly linearly via `linear_order()`. The proposed architecture will replace `ExecutionPipeline`'s linear stage array with an LLVM-style Intermediate Representation (IR).
 
 ---
 
-## 3. Execution Graph Architecture
+## 3. Execution IR Architecture
 
-An execution graph replaces linear pipelines with a DAG of nodes. Based on `GraphNodeType` and backend audits, the taxonomy is:
+The Execution IR models inference as an immutable graph. Runtime state lives entirely outside the IR nodes.
 
-*   **Capability Resolution Node:** Decides if graph falls back to AR based on context.
+**Immutability Guarantee:**
+*   `ExecutionNode`: Represents an operation (never mutates).
+*   `ExecutionEdge`: Represents data or control flow dependencies (never mutates).
+*   `ExecutionMetadata`: Static properties of the node (never mutates).
+*   *Runtime state (e.g., active tensors, KV blocks) is tracked externally by the `ExecutionRuntime` during traversal.*
+
+**Node Taxonomy (Derived from Repo Evidence):**
 *   **Input Node (Prefill Node):** Prepares batch inputs, embedding injections (VLM).
-*   **Cache Node (ExtractCache Node):** Manages KV updates.
-*   **Routing Node:** Defines MoE routing kernels.
+*   **Cache Node (ExtractCache Node):** Marks KV updates.
+*   **Routing Node:** Represents MoE routing kernels.
 *   **Forward Node:** Standard model MLP/Attention forward pass.
 *   **Sampling Node:** Logit processing and next token selection.
 *   **Draft Node & Accept Node:** Speculative components.
@@ -67,93 +73,112 @@ An execution graph replaces linear pipelines with a DAG of nodes. Based on `Grap
 *   **Synchronization Node:** Barrier nodes ensuring `mx.eval()` execution.
 *   **Decode/Emit Node:** Emits tokens and metrics.
 
-**Graph Edges Enforcement:**
-*   **Execution Dependency Edges:** Structural order (e.g., `ForwardNode` → `SampleNode`).
-*   **Data Flow Edges:** Explicit mapping of output tensors to input parameters (e.g., Logits → Sampler).
+**IR Edges Enforcement:**
+*   **Execution Dependency Edges:** Structural order.
+*   **Data Flow Edges:** Explicit mapping of output tensors to input parameters.
 *   **Synchronization Edges:** Forces streams to sync before cache modifications.
-*   **Cache Dependency Edges:** Guarantees KV writes resolve before subsequent forwards.
 *   **Verification Edges:** Branches off main compute path for debug validation.
-*   *Ordering Enforcement:* Handled by a Topological Sort executed by the graph runtime evaluator.
 
 ---
 
-## 4. Runtime Optimizer Design
+## 4. Graph Passes & Optimization Pipeline
 
-Graph execution enables AOT optimization passes before runtime execution.
+Instead of a monolithic optimizer, the pipeline exposes an extensible pass system. Plugins can register passes (aligning with RAES-010).
 
-**Feasible Passes from Repository Evidence:**
-1.  **Dead Stage Elimination:** If `hot_cache_only` is true and cache is hit, skip unnecessary KV updates.
-2.  **Stage Fusion:** Combine `Forward` and `Sample` if supported by hardware kernels.
-3.  **Synchronization Elimination:** Defer intermediate `mx.eval()` calls until required by an `EmitNode` or memory bound.
-4.  **Graph Simplification:** Collapse empty speculative verification branches if confidence models dictate auto-accept.
-5.  **Capability-Aware Optimization:** Strip `Routing Node` if model is dense.
+**Pass Hierarchy:**
+```
+OptimizationPass
+   ↓
+GraphPass (e.g., Dead Stage Elimination, Graph Rewriting)
+   ↓
+MemoryPass (e.g., Cache Reuse, Memory Planning)
+   ↓
+FusionPass (e.g., Kernel Fusion, ForwardSample Fusion)
+   ↓
+SchedulingPass (e.g., Sync Elimination, Topological Sort)
+```
+
+**Graph Rewriting:**
+The IR explicitly supports rewriting. For example, a `ForwardNode` followed by a `SampleNode` can be rewritten into a fused `ForwardSampleNode` by a `FusionPass`, completely transparently to the backend.
 
 ---
 
 ## 5. Execution Planner
 
-Transforms configurations into executable code via:
+The Execution Planner becomes a smarter, multi-dimensional resolver evaluating constraints to produce the optimal IR.
 
-1.  **Execution Profile:** `ExecutionContext` mapped by `ExecutionProfileRegistry`.
-2.  **Capability Set:** Capability negotiation (e.g., if Diffusion profile requested but not supported, fallback to AR).
-3.  **Execution Graph Construction:** Graph builder instantiates unoptimized DAG nodes based on profile.
-4.  **Optimized Graph:** Optimizer applies feasible passes (fusion, elimination).
-5.  **Runtime Execution:** DAG is handed to backend for topological evaluation.
+**Resolution Chain:**
+`Planner → Capabilities → Hardware → Memory → Context Window → Model Family → Execution IR`
+
+This depth is required for complex routing, like determining if Streaming MoE fits in memory or if VLM embeddings require chunked prefill.
 
 ---
 
-## 6. Multi-Capability Support
+## 6. Continuous Pipeline
 
-Because the `Scheduler` only calls `strategy.forward()` or `strategy.insert()`, it remains agnostic to *how* the execution completes. The graph abstracts complex behaviors:
+The systems are merged into one continuous, compiler-like pipeline:
 
-*   **Autoregressive:** `Prefill -> Forward -> Sample -> Emit`
-*   **Diffusion:** `Prefill -> Init Block -> Denoise Loop -> Forward -> Emit`
-*   **Streaming MoE:** Inserts `Routing Node` prior to `Forward Node`.
-*   **VLM:** Prepends `VLM Embed Node` to `Prefill Node`.
-*   **Future Capabilities:** New nodes can be registered in `GraphNodeType` and executed dynamically without touching `omlx/scheduler.py`.
+```
+Capability Resolver
+        │
+        ▼
+Execution Planner (Capabilities → Hardware → Memory → Model Family)
+        │
+        ▼
+Execution IR (Builder generates immutable Nodes & Edges)
+        │
+        ▼
+Optimization Pipeline (GraphPass → MemoryPass → FusionPass)
+        │
+        ▼
+Execution Runtime (Topological traversal managing external state)
+```
+
+Because the `Scheduler` only calls `strategy.forward()` or `strategy.insert()`, it remains agnostic to this pipeline.
 
 ---
 
 ## 7. Memory Scheduling Design
 
-Graph-aware memory execution handles constraints predictably:
-
-*   **Cache Ownership:** KV cache arrays belong to graph outputs.
-*   **Activation Lifetime:** Graph nodes explicitly track inputs; tensors are deleted instantly when a node's topological dependents complete.
-*   **KV Cache Reuse:** Match prefix sub-graphs prior to execution.
-*   **Garbage Collection Boundaries:** `Memory Nodes` placed at end-of-graph trigger safe `mx.clear_cache()` outside async MLX overflows.
+*   **Cache Ownership:** KV cache arrays belong to graph outputs, tracked in external runtime state.
+*   **Activation Lifetime:** Dictated by the IR topology; tensors drop when topological dependents complete.
+*   **Garbage Collection Boundaries:** `Memory Nodes` placed via `MemoryPass` trigger safe `mx.clear_cache()`.
 
 ---
 
-## 8. Hardware Integration
+## 8. Hardware Abstraction
 
-*   **Metal Optimization:** Node executions lower directly to MLX stream operations (`mx.eval`).
-*   **CPU Fallback:** Nodes encapsulate operations. If a custom node fails, graph falls back to generic node.
-*   **Heterogeneous Execution:** Potential to label nodes with target devices (e.g., execute `VLM Embed Node` on Neural Engine, `Forward Node` on GPU).
+Device placement within the IR is abstracted from specific backends (Metal, CUDA, etc.).
+
+Instead of specifying GPU or CPU, nodes specify:
+*   `Preferred Device`
+*   `Required Device`
+*   `Fallback Device`
+
+Metal, CUDA, ROCm, and Neural Engine act strictly as implementation backends that satisfy these generalized device requirements during the `SchedulingPass`.
 
 ---
 
 ## 9. Verification Integration
 
-Verification seamlessly plugs into DAG logic.
-*   **Integration:** A `Verify Node` attaches to the output edge of a `Forward Node`.
+Verification seamlessly plugs into the IR logic via rewriting passes.
+*   **Integration:** A `GraphPass` injects a `Verify Node` on the output edge of a `Forward Node`.
 *   **Equivalence:** Evaluates tensor outputs against Golden HF datasets in `omlx/eval/`.
-*   **Cleanliness:** When verification is disabled, the optimizer removes the `Verify Node` entirely, causing zero runtime pollution.
+*   **Cleanliness:** When verification is disabled, the pass does not run, leaving the IR pristine and performant.
 
 ---
 
 ## 10. Repository Changes
 
-Based on current repository structure constraints:
-
 **NEW FILES:**
-*   `omlx/inference/graph_optimizer.py`
-*   `omlx/inference/graph_builder.py`
-*   `omlx/inference/execution_node.py`
+*   `omlx/inference/execution_ir.py` (Immutable Nodes, Edges, Metadata).
+*   `omlx/inference/ir_passes.py` (Base classes for GraphPass, MemoryPass, FusionPass).
+*   `omlx/inference/ir_planner.py` (Smart context resolution to IR).
+*   `omlx/inference/ir_runtime.py` (Manages external state during traversal).
 
 **MODIFIED FILES:**
-*   `omlx/inference/execution_graph.py` (Enhance DAG logic beyond `linear_order`).
-*   `omlx/inference/execution_backend.py` (Modify `ExecutionPipeline` to evaluate DAGs instead of arrays).
+*   `omlx/inference/execution_graph.py` (To be deprecated/migrated to `execution_ir.py`).
+*   `omlx/inference/execution_backend.py` (Refactored to trigger the continuous pipeline).
 
 **UNTOUCHED FILES:**
 *   `omlx/scheduler.py` (Zero changes, strict requirement).
@@ -163,25 +188,24 @@ Based on current repository structure constraints:
 
 ## 11. Risk Analysis
 
-*   **Graph Complexity:** Debugging asynchronous graph state machines is inherently harder than debugging linear arrays.
-*   **Optimization Correctness:** Aggressive fusion or sync elimination could lead to MLX Stream underflows (similar to bugs noted in `scheduler.py`).
-*   **Scheduler Compatibility:** Although Scheduler logic doesn't change, graph evaluation must respect timing constraints (e.g., TTFT SLAs).
+*   **IR Complexity:** Managing immutable graphs and externalizing state requires strict discipline.
+*   **Optimization Correctness:** Graph rewriting (e.g., Forward + Sample -> ForwardSample) must preserve exact mathematical equivalence.
+*   **Plugin Safety:** Malicious or buggy third-party passes could break the IR topology.
 
 ---
 
 ## 12. Verification Plan
 
-*   **Graph Construction:** Unit tests verifying topologies (e.g., diffusion has denoise loops).
-*   **Execution Equivalence:** Golden test: ensure Output(Linear) == Output(Graph) for 1000 fixed seeds.
-*   **Determinism:** Verify topological sorts are stable across identical runs.
-*   **Cache Correctness:** Assert that Prefix KV nodes do not leak.
+*   **Pass Correctness:** Unit tests asserting that IR Before Pass A -> `GraphPass` -> IR After Pass A is deterministic.
+*   **Execution Equivalence:** Golden test: ensure Output(Linear) == Output(IR Pipeline) for 1000 fixed seeds.
+*   **Immutability Assertions:** Strong typing and frozen dataclasses preventing runtime mutations.
 
 ---
 
 ## 13. Rollback Strategy & Recommendation
 
-**Rollback Strategy:** Feature flag `USE_GRAPH_EXECUTOR`. Retain the existing `ExecutionPipeline` list logic as fallback.
-**Recommendation for Implementation Checkpoint:** Begin by refactoring `omlx/inference/execution_graph.py` to support true topological traversal and implement a `GraphExecutor` alongside the current `ExecutionPipeline`. Prove exact semantic equivalence on the Autoregressive profile before migrating speculative or diffusion paths.
+**Rollback Strategy:** Feature flag `USE_IR_PIPELINE`. Retain the existing `ExecutionPipeline` list logic as fallback.
+**Recommendation for Implementation Checkpoint:** Begin by implementing `execution_ir.py` with frozen data structures. Build a single `GraphPass` that emits the IR for the Autoregressive profile, and verify the `ExecutionRuntime` can traverse it exactly like the legacy list.
 
 ---
 
@@ -202,68 +226,42 @@ graph TD
     Engine --> Runtime[BatchGenerator]
 ```
 
-### 2. Graph Execution Architecture (DAG)
+### 2. Continuous IR Pipeline
 ```mermaid
 graph TD
-    Prefill[Prefill Node] --> InitBlock[Initialize Block Node<br/>*Diffusion Only*]
-    InitBlock --> Denoise[Denoise Node<br/>*Diffusion Only*]
-    Prefill --> Embed[VLM Embed Node<br/>*VLM Only*]
-    Embed --> Route[Routing Node<br/>*MoE Only*]
-    Prefill --> Route
-    Denoise --> Route
-    Route --> Forward[Forward Node]
-    Forward --> Cache[Cache Node]
-    Cache --> Sync[Synchronization Node]
-    Sync --> Sample[Sampling Node]
-    Sample --> Emit[Emit Node]
+    Resolver[Capability Resolver] --> Planner
+    Planner[Execution Planner<br/>Hardware/Memory/Model] --> Builder[IR Builder]
+    Builder --> IR[Immutable Execution IR]
+    IR --> OptPipeline[Optimization Pipeline]
+    OptPipeline --> Pass1[GraphPass]
+    Pass1 --> Pass2[MemoryPass]
+    Pass2 --> Pass3[FusionPass]
+    Pass3 --> Pass4[SchedulingPass]
+    Pass4 --> OptIR[Optimized IR]
+    OptIR --> Runtime[Execution Runtime<br/>Manages External State]
 ```
 
-### 3. Graph Optimization Pipeline
+### 3. Graph Rewriting (Fusion Pass)
 ```mermaid
 graph LR
-    RawGraph[Raw Execution Graph] --> Pass1[Dead Stage Elimination]
-    Pass1 --> Pass2[Stage Fusion]
-    Pass2 --> Pass3[Sync Elimination]
-    Pass3 --> OptGraph[Optimized Executable DAG]
+    subgraph Before Pass
+        F1[Forward Node] --> S1[Sample Node]
+    end
+
+    subgraph After Pass
+        FS[ForwardSample Node]
+    end
+
+    F1 -.->|Fusion Pass| FS
 ```
 
-### 4. Execution Planner
+### 4. Hardware Device Placement
 ```mermaid
 graph TD
-    Context[ExecutionContext] -->|Resolves| Profile[ExecutionProfileRegistry]
-    Profile --> Capabilities[Capability Set]
-    Capabilities -->|Negotiates| Builder[Graph Builder]
-    Builder --> RawGraph[Unoptimized Graph]
-    RawGraph --> Optimizer[Graph Optimizer]
-    Optimizer --> FinalGraph[Optimized DAG]
-    FinalGraph --> Runtime[ExecutionBackend]
+    Node[Execution Node] -->|Requests| Req
+    Req{Placement Policy}
+    Req -->|Required| D1[Required Device]
+    Req -->|Preferred| D2[Preferred Device]
+    Req -->|Fallback| D3[Fallback Device]
+    D1 -.->|Resolved at Runtime| Metal[Metal / CUDA / etc]
 ```
-
-### 5. Memory Scheduling Graph
-```mermaid
-graph TD
-    InputTensors --> Node1[Forward Node]
-    Node1 -->|Activations| Node2[Sample Node]
-    Node2 -->|Done| GC1[Garbage Collection Trigger]
-    GC1 -->|Free Activations| MemoryPool
-    Node1 --> CacheTensor[Cache Node]
-    CacheTensor -->|Persist| SSDStore
-```
-
-### 6. Verification Integration
-```mermaid
-graph TD
-    Forward[Forward Node] --> Output[Logits / Hidden States]
-    Output --> Sample[Sample Node]
-    Output -->|Hooks| Verify[Verify Node]
-    Verify -->|Compare| Golden[Golden HF Assets]
-```
-
-### 7. Hardware Abstraction Graph
-```mermaid
-graph TD
-    Node[Execution Node] -->|Capability Check| HW
-    HW{Target Device}
-    HW -->|Default| Metal[Metal / GPU]
-    HW -->|Fallback| CPU[CPU]
-    HW -->|Future| NPU[Neural Engine]
