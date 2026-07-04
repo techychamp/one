@@ -1,7 +1,7 @@
 # RAES-011: Execution IR & Runtime Optimizer Architecture
 
 ## Objective
-Perform a complete repository audit and design an Intermediate Representation (IR) execution architecture that allows runtime execution to be modeled exactly like a compiler (e.g., LLVM). Execution will move through a continuous pipeline: Capability Resolver → Execution Planner → Execution IR → Optimization Pipeline → Execution Runtime. The architecture must support future optimization passes, graph rewriting, and node immutability without changing Scheduler logic.
+Perform a complete repository audit and design an Intermediate Representation (IR) execution architecture that allows runtime execution to be modeled exactly like a compiler (e.g., LLVM/MLIR). Execution will move through a continuous pipeline: Capability Resolver → Execution Planner → Logical IR → Optimization & Lowering Pipeline → Physical IR → Execution Runtime. The architecture must support future optimization passes, graph rewriting, and node immutability without changing Scheduler logic.
 
 ---
 
@@ -48,101 +48,96 @@ Response
 ```
 
 **Comparison against Proposed Execution IR:**
-Currently, `ExecutionGraph` (in `omlx/inference/execution_graph.py`) defines a pseudo-graph using `GraphNode` (`next_nodes`), but traversal acts strictly linearly via `linear_order()`. The proposed architecture will replace `ExecutionPipeline`'s linear stage array with an LLVM-style Intermediate Representation (IR).
+Currently, `ExecutionGraph` (in `omlx/inference/execution_graph.py`) defines a pseudo-graph using `GraphNode` (`next_nodes`), but traversal acts strictly linearly via `linear_order()`. The proposed architecture replaces this with a compiler-like MLIR-style separation of representations.
 
 ---
 
-## 3. Execution IR Architecture
+## 3. Logical vs. Physical Execution IR
 
-The Execution IR models inference as an immutable graph. Runtime state lives entirely outside the IR nodes.
+To support robust hardware acceleration, the IR is split structurally (modeled on MLIR).
+
+**Logical IR:**
+Represents operations mathematically/abstractly.
+*   `Forward Node`, `Sample Node`, `Denoise Node`, `Emit Node`.
+
+**Physical IR (Lowered IR):**
+Represents concrete hardware operations post-lowering.
+*   `Metal Kernel Execution`, `Memory Barrier Node`, `Cache Copy Node`, `Stream Sync Node`.
 
 **Immutability Guarantee:**
-*   `ExecutionNode`: Represents an operation (never mutates).
-*   `ExecutionEdge`: Represents data or control flow dependencies (never mutates).
-*   `ExecutionMetadata`: Static properties of the node (never mutates).
+*   Both Logical and Physical nodes (`ExecutionNode`, `ExecutionEdge`, `ExecutionMetadata`) are strictly immutable.
 *   *Runtime state (e.g., active tensors, KV blocks) is tracked externally by the `ExecutionRuntime` during traversal.*
 
-**Node Taxonomy (Derived from Repo Evidence):**
-*   **Input Node (Prefill Node):** Prepares batch inputs, embedding injections (VLM).
-*   **Cache Node (ExtractCache Node):** Marks KV updates.
-*   **Routing Node:** Represents MoE routing kernels.
-*   **Forward Node:** Standard model MLP/Attention forward pass.
-*   **Sampling Node:** Logit processing and next token selection.
-*   **Draft Node & Accept Node:** Speculative components.
-*   **Denoise Node & Initialize Block Node:** Diffusion components.
-*   **Synchronization Node:** Barrier nodes ensuring `mx.eval()` execution.
-*   **Decode/Emit Node:** Emits tokens and metrics.
+---
 
-**IR Edges Enforcement:**
-*   **Execution Dependency Edges:** Structural order.
-*   **Data Flow Edges:** Explicit mapping of output tensors to input parameters.
-*   **Synchronization Edges:** Forces streams to sync before cache modifications.
-*   **Verification Edges:** Branches off main compute path for debug validation.
+## 4. Pass Manager & Optimization Pipeline
+
+Instead of a single optimizer, execution utilizes a `PassManager` to coordinate analysis, lowering, and rewriting across the pipeline, behaving explicitly like LLVM.
+
+**Pass Pipeline:**
+1.  **Analysis Passes:** Non-mutating passes that produce metadata.
+    *   *Shape Analysis:* Predicts tensor sizes.
+    *   *Memory Analysis:* Computes peak RAM pressure.
+    *   *Liveness Analysis:* Determines when tensors can be freed.
+    *   *Dependency Analysis:* Maps async stream requirements.
+2.  **Rewrite Passes (Logical):** Modifies the Logical IR based on analysis and Cost Models.
+    *   *Dead Stage Elimination:* Removes cache nodes if hot cache is valid.
+    *   *Graph Rewriting:* Transforms `ForwardNode` -> `SampleNode` into fused `ForwardSampleNode`.
+3.  **Lowering Passes:** Lowers Logical IR to Physical IR.
+    *   Maps `ForwardNode` to specific `Metal Kernel` invocations based on hardware capabilities.
+4.  **Validation Passes:** Non-mutating passes ensuring IR correctness.
+    *   *Equivalence Check:* Ensures mathematical properties haven't mutated during rewrites.
 
 ---
 
-## 4. Graph Passes & Optimization Pipeline
+## 5. Execution Planner & Cost Models
 
-Instead of a monolithic optimizer, the pipeline exposes an extensible pass system. Plugins can register passes (aligning with RAES-010).
+The Execution Planner becomes a smarter, multi-dimensional resolver evaluating constraints to produce the optimal Logical IR.
 
-**Pass Hierarchy:**
-```
-OptimizationPass
-   ↓
-GraphPass (e.g., Dead Stage Elimination, Graph Rewriting)
-   ↓
-MemoryPass (e.g., Cache Reuse, Memory Planning)
-   ↓
-FusionPass (e.g., Kernel Fusion, ForwardSample Fusion)
-   ↓
-SchedulingPass (e.g., Sync Elimination, Topological Sort)
-```
-
-**Graph Rewriting:**
-The IR explicitly supports rewriting. For example, a `ForwardNode` followed by a `SampleNode` can be rewritten into a fused `ForwardSampleNode` by a `FusionPass`, completely transparently to the backend.
-
----
-
-## 5. Execution Planner
-
-The Execution Planner becomes a smarter, multi-dimensional resolver evaluating constraints to produce the optimal IR.
+**Cost Model Integration:**
+The Planner exposes a `Cost Model` to the Pass Manager. Rewrite passes query the Cost Model rather than blindly executing.
+*   *Example:* A `FusionPass` doesn't just fuse; it asks `ShouldFuse(latency, memory, cache_pressure)` based on Cost Model predictions for the current hardware.
 
 **Resolution Chain:**
-`Planner → Capabilities → Hardware → Memory → Context Window → Model Family → Execution IR`
-
-This depth is required for complex routing, like determining if Streaming MoE fits in memory or if VLM embeddings require chunked prefill.
+`Planner → Capabilities → Cost Model → Hardware → Memory → Context Window → Model Family → Logical IR`
 
 ---
 
 ## 6. Continuous Pipeline
 
-The systems are merged into one continuous, compiler-like pipeline:
+The systems merge into one continuous, compiler-like pipeline:
 
 ```
 Capability Resolver
         │
         ▼
-Execution Planner (Capabilities → Hardware → Memory → Model Family)
+Execution Planner (Capabilities → Cost Model → Hardware → Memory → Model Family)
         │
         ▼
-Execution IR (Builder generates immutable Nodes & Edges)
+Logical IR (Abstract mathematical operations)
         │
         ▼
-Optimization Pipeline (GraphPass → MemoryPass → FusionPass)
+Pass Manager (Analysis → Cost-based Rewrite → Validation)
+        │
+        ▼
+Lowering (Logical IR → Physical IR)
+        │
+        ▼
+Physical IR (Metal kernels, memory barriers)
         │
         ▼
 Execution Runtime (Topological traversal managing external state)
 ```
 
-Because the `Scheduler` only calls `strategy.forward()` or `strategy.insert()`, it remains agnostic to this pipeline.
+Because the `Scheduler` only calls `strategy.forward()` or `strategy.insert()`, it remains completely agnostic to this pipeline.
 
 ---
 
 ## 7. Memory Scheduling Design
 
 *   **Cache Ownership:** KV cache arrays belong to graph outputs, tracked in external runtime state.
-*   **Activation Lifetime:** Dictated by the IR topology; tensors drop when topological dependents complete.
-*   **Garbage Collection Boundaries:** `Memory Nodes` placed via `MemoryPass` trigger safe `mx.clear_cache()`.
+*   **Activation Lifetime:** Dictated by the *Liveness Analysis* pass; tensors drop when topological dependents complete.
+*   **Garbage Collection Boundaries:** `Memory Nodes` placed via Rewrite passes trigger safe `mx.clear_cache()`.
 
 ---
 
@@ -150,35 +145,35 @@ Because the `Scheduler` only calls `strategy.forward()` or `strategy.insert()`, 
 
 Device placement within the IR is abstracted from specific backends (Metal, CUDA, etc.).
 
-Instead of specifying GPU or CPU, nodes specify:
+Instead of specifying GPU or CPU, nodes specify abstract constraints:
 *   `Preferred Device`
 *   `Required Device`
 *   `Fallback Device`
 
-Metal, CUDA, ROCm, and Neural Engine act strictly as implementation backends that satisfy these generalized device requirements during the `SchedulingPass`.
+Metal, CUDA, ROCm, and Neural Engine act strictly as implementation targets that satisfy these constraints during the Lowering Pass to the Physical IR.
 
 ---
 
 ## 9. Verification Integration
 
-Verification seamlessly plugs into the IR logic via rewriting passes.
-*   **Integration:** A `GraphPass` injects a `Verify Node` on the output edge of a `Forward Node`.
+Verification seamlessly plugs into the IR logic via passes.
+*   **Integration:** A validation pass injects a `Verify Node` on the output edge of a `Forward Node`.
 *   **Equivalence:** Evaluates tensor outputs against Golden HF datasets in `omlx/eval/`.
-*   **Cleanliness:** When verification is disabled, the pass does not run, leaving the IR pristine and performant.
+*   **Cleanliness:** When verification is disabled, the pass does not run, leaving the Physical IR pristine and performant.
 
 ---
 
 ## 10. Repository Changes
 
 **NEW FILES:**
-*   `omlx/inference/execution_ir.py` (Immutable Nodes, Edges, Metadata).
-*   `omlx/inference/ir_passes.py` (Base classes for GraphPass, MemoryPass, FusionPass).
-*   `omlx/inference/ir_planner.py` (Smart context resolution to IR).
-*   `omlx/inference/ir_runtime.py` (Manages external state during traversal).
+*   `omlx/inference/execution_ir.py` (Immutable Nodes, Edges, Metadata for Logical/Physical IR).
+*   `omlx/inference/ir_passes.py` (PassManager, AnalysisPass, RewritePass, LoweringPass).
+*   `omlx/inference/ir_planner.py` (Smart context resolution and Cost Model).
+*   `omlx/inference/ir_runtime.py` (Manages external state during Physical IR traversal).
 
 **MODIFIED FILES:**
 *   `omlx/inference/execution_graph.py` (To be deprecated/migrated to `execution_ir.py`).
-*   `omlx/inference/execution_backend.py` (Refactored to trigger the continuous pipeline).
+*   `omlx/inference/execution_backend.py` (Refactored to trigger the PassManager).
 
 **UNTOUCHED FILES:**
 *   `omlx/scheduler.py` (Zero changes, strict requirement).
@@ -188,80 +183,103 @@ Verification seamlessly plugs into the IR logic via rewriting passes.
 
 ## 11. Risk Analysis
 
-*   **IR Complexity:** Managing immutable graphs and externalizing state requires strict discipline.
+*   **IR Complexity:** Managing dual IR levels (Logical/Physical) and externalized state requires strict discipline.
 *   **Optimization Correctness:** Graph rewriting (e.g., Forward + Sample -> ForwardSample) must preserve exact mathematical equivalence.
-*   **Plugin Safety:** Malicious or buggy third-party passes could break the IR topology.
+*   **Cost Model Accuracy:** If the cost model's predictions (latency, memory bounds) are inaccurate, the pass manager may select suboptimal physical kernels.
 
 ---
 
 ## 12. Verification Plan
 
-*   **Pass Correctness:** Unit tests asserting that IR Before Pass A -> `GraphPass` -> IR After Pass A is deterministic.
-*   **Execution Equivalence:** Golden test: ensure Output(Linear) == Output(IR Pipeline) for 1000 fixed seeds.
-*   **Immutability Assertions:** Strong typing and frozen dataclasses preventing runtime mutations.
+*   **Pass Correctness:** Unit tests asserting that IR Before Pass A -> `RewritePass` -> IR After Pass A is mathematically deterministic.
+*   **Analysis Accuracy:** Assertions ensuring *Liveness Analysis* matches empirical memory drops.
+*   **Execution Equivalence:** Golden test: ensure Output(Linear) == Output(Physical IR Pipeline) for 1000 fixed seeds.
 
 ---
 
 ## 13. Rollback Strategy & Recommendation
 
 **Rollback Strategy:** Feature flag `USE_IR_PIPELINE`. Retain the existing `ExecutionPipeline` list logic as fallback.
-**Recommendation for Implementation Checkpoint:** Begin by implementing `execution_ir.py` with frozen data structures. Build a single `GraphPass` that emits the IR for the Autoregressive profile, and verify the `ExecutionRuntime` can traverse it exactly like the legacy list.
+**Recommendation for Implementation Checkpoint:** Begin by implementing `execution_ir.py` with frozen data structures representing the Logical IR. Build a simple `PassManager` that lowers directly to Physical IR for the Autoregressive profile without rewrite optimization, verifying exact equivalence to the legacy list logic.
 
 ---
 
 ## 14. Diagrams
 
-### 1. Current Execution Architecture (Linear)
-```mermaid
-graph TD
-    Scheduler -->|Calls insert/forward| Strategy
-    Strategy -->|Delegates to| Backend
-    Backend -->|Evaluates Pipeline| Pipeline[ExecutionPipeline]
-    Pipeline --> Stage1[PrefillStage]
-    Stage1 --> Stage2[ForwardStage]
-    Stage2 --> Stage3[ExtractCacheStage]
-    Stage3 --> Stage4[SampleStage]
-    Stage4 --> Stage5[PostprocessStage]
-    Stage5 --> Engine[TransformerExecutionEngine]
-    Engine --> Runtime[BatchGenerator]
-```
-
-### 2. Continuous IR Pipeline
+### 1. MLIR-Style Dual IR Pipeline
 ```mermaid
 graph TD
     Resolver[Capability Resolver] --> Planner
-    Planner[Execution Planner<br/>Hardware/Memory/Model] --> Builder[IR Builder]
-    Builder --> IR[Immutable Execution IR]
-    IR --> OptPipeline[Optimization Pipeline]
-    OptPipeline --> Pass1[GraphPass]
-    Pass1 --> Pass2[MemoryPass]
-    Pass2 --> Pass3[FusionPass]
-    Pass3 --> Pass4[SchedulingPass]
-    Pass4 --> OptIR[Optimized IR]
-    OptIR --> Runtime[Execution Runtime<br/>Manages External State]
+    Planner[Execution Planner<br/>Cost Model / Memory] --> Builder[IR Builder]
+    Builder --> LIR[Logical IR<br/>Abstract Mathematical Graph]
+    LIR --> PassManager[Pass Manager]
+    PassManager --> Analysis[Analysis Passes<br/>Shape/Liveness/Memory]
+    Analysis --> Rewrite[Rewrite Passes<br/>Cost-Model Evaluated]
+    Rewrite --> Validation[Validation Passes]
+    Validation --> Lowering[Lowering Passes]
+    Lowering --> PIR[Physical IR<br/>Metal Kernels/Barriers]
+    PIR --> Runtime[Execution Runtime<br/>Manages External State]
 ```
 
-### 3. Graph Rewriting (Fusion Pass)
+### 2. Pass Manager Subsystem
+```mermaid
+graph LR
+    subgraph Pass Manager
+        A1[Shape Analysis] -.-> R1
+        A2[Memory Analysis] -.-> R1
+        A3[Liveness Analysis] -.-> Lowering
+        R1[Rewrite Pass] --> R2[Graph Fusion Pass]
+        R2 --> V1[Equivalence Validation]
+    end
+```
+
+### 3. Cost-Model Driven Graph Rewriting
 ```mermaid
 graph LR
     subgraph Before Pass
-        F1[Forward Node] --> S1[Sample Node]
+        F1[Logical Forward] --> S1[Logical Sample]
+    end
+
+    subgraph Cost Model Execution
+        Q1{Should Fuse?}
+        Q1 -->|Check Memory| Mem[Memory OK]
+        Q1 -->|Check Latency| Lat[Latency Better]
     end
 
     subgraph After Pass
-        FS[ForwardSample Node]
+        FS[Logical ForwardSample]
     end
 
-    F1 -.->|Fusion Pass| FS
+    F1 -.-> Q1
+    Mem -.-> FS
+    Lat -.-> FS
 ```
 
-### 4. Hardware Device Placement
+### 4. Logical vs. Physical Lowering
 ```mermaid
 graph TD
-    Node[Execution Node] -->|Requests| Req
-    Req{Placement Policy}
+    subgraph Logical IR
+        LF[Forward Node]
+    end
+
+    subgraph Physical IR
+        MK[Metal Kernel Dispatch Node]
+        MB[Memory Barrier Node]
+        CC[Cache Copy Node]
+    end
+
+    LF -->|Lowering Pass| MK
+    LF -->|Lowering Pass| MB
+    LF -->|Lowering Pass| CC
+```
+
+### 5. Hardware Device Placement
+```mermaid
+graph TD
+    Node[Logical Node] -->|Declares| Req
+    Req{Placement Constraint}
     Req -->|Required| D1[Required Device]
     Req -->|Preferred| D2[Preferred Device]
     Req -->|Fallback| D3[Fallback Device]
-    D1 -.->|Resolved at Runtime| Metal[Metal / CUDA / etc]
+    D1 -.->|Resolved in Lowering| Metal[Metal / CUDA / etc]
 ```
