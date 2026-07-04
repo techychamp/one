@@ -268,13 +268,13 @@ class ServerState:
     """
 
     runtime: Optional[object] = None
-    engine_pool: Optional[EnginePool] = None
+    _engine_pool: Optional[EnginePool] = None
     default_model: Optional[str] = None
     mcp_manager: Optional[object] = None
     mcp_executor: Optional[object] = None
     sampling: SamplingDefaults = field(default_factory=SamplingDefaults)
     api_key: Optional[str] = None
-    settings_manager: Optional[object] = None  # ModelSettingsManager
+    _settings_manager: Optional[object] = None  # ModelSettingsManager
     global_settings: Optional[object] = None  # GlobalSettings
     hf_downloader: Optional[object] = None  # HFDownloader
     ms_downloader: Optional[object] = None  # MSDownloader
@@ -282,6 +282,31 @@ class ServerState:
     responses_store: ResponseStore = field(default_factory=ResponseStore)
     oq_manager: Optional[object] = None  # OQManager
     hf_uploader: Optional[object] = None  # HFUploader
+
+    @property
+    def engine_pool(self) -> Optional[EnginePool]:
+        if self.runtime and hasattr(self.runtime, "engine_pool") and self.runtime.engine_pool is not None:
+            return self.runtime.engine_pool
+        return self._engine_pool
+
+    @engine_pool.setter
+    def engine_pool(self, value: Optional[EnginePool]) -> None:
+        self._engine_pool = value
+        if self.runtime:
+            self.runtime.engine_pool = value
+
+    @property
+    def settings_manager(self) -> Optional[object]:
+        if self.runtime and hasattr(self.runtime, "settings") and self.runtime.settings is not None:
+            return self.runtime.settings
+        return self._settings_manager
+
+    @settings_manager.setter
+    def settings_manager(self, value: Optional[object]) -> None:
+        self._settings_manager = value
+        if self.runtime:
+            self.runtime.settings = value
+
 
 
 # Global server state instance

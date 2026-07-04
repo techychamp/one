@@ -206,3 +206,24 @@ def test_export_and_list(ff_system):
     runtime_flags = snapshot.get_flags_by_category(FlagCategory.RUNTIME)
     assert len(runtime_flags) == 1
     assert runtime_flags[0].name == "flag2"
+
+def test_dynamic_typed_accessors(ff_system):
+    ff_system.register(FeatureFlag(
+        name="execution-planner",
+        description="Execution planner flag",
+        category=FlagCategory.PLANNER,
+        lifecycle=FlagLifecycle.EXPERIMENTAL,
+        default_value=True,
+        owner="test",
+        creation_checkpoint="IMP-003A"
+    ))
+    snapshot = ff_system.take_snapshot()
+    
+    # 1. Attribute access
+    assert snapshot.execution_planner is True
+    # 2. _enabled suffix is a callable method
+    assert callable(snapshot.execution_planner_enabled)
+    # 3. Invoking the method returns the flag value
+    assert snapshot.execution_planner_enabled() is True
+
+

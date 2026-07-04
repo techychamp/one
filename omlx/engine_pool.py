@@ -142,6 +142,9 @@ class EnginePool:
         self._load_seconds_per_gb_ema: float | None = None
         self._load_time_observations: int = 0
         self.configure_hot_cache_budget()
+        from .model_registry import ModelRegistry
+        self.model_registry = ModelRegistry()
+
 
     @property
     def current_model_memory(self) -> int:

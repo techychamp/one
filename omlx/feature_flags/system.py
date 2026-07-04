@@ -7,6 +7,13 @@ class ImmutableSnapshot:
     def __init__(self, values: Dict[str, Any], registry: FeatureFlagRegistry):
         self._values = values
         self._registry = registry
+        from omlx.runtime.feature_flags import FeatureFlags
+        self._flags = FeatureFlags(
+            DIFFUSION_ENABLED=bool(values.get("diffusion", False)),
+            LINEAR_SPEC_ENABLED=bool(values.get("linear-spec", False)),
+            SHARED_CACHE_ENABLED=bool(values.get("shared-cache", False)),
+            VERIFY_ATTENTION_ENABLED=bool(values.get("verify-attention", False)),
+        )
 
     def is_enabled(self, name: str) -> bool:
         flag = self._registry.get_flag(name)
@@ -25,6 +32,27 @@ class ImmutableSnapshot:
 
     def get_flags_by_category(self, category: FlagCategory) -> List[FeatureFlag]:
          return self._registry.get_flags_by_category(category)
+
+    def __getattr__(self, name: str) -> Any:
+        if hasattr(self, "_flags") and hasattr(self._flags, name):
+            return getattr(self._flags, name)
+
+        normalized_name = name.lower().replace("_", "-")
+        is_enabled_check = False
+        if normalized_name.endswith("-enabled"):
+            normalized_name = normalized_name[:-8]
+            is_enabled_check = True
+
+        try:
+            self._registry.get_flag(normalized_name)
+            val = self._values[normalized_name]
+            if is_enabled_check:
+                return lambda: bool(val)
+            return val
+        except ValueError:
+            raise AttributeError(f"ImmutableSnapshot object has no attribute '{name}'")
+
+
 
 
 class FeatureFlagSystem:

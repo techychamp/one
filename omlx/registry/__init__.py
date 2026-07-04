@@ -41,6 +41,7 @@ from .core import (
     MetadataVerificationRegistry,
     MetadataBackendEntry,
     MetadataBackendRegistry,
+    RegistryContainer,
 )
 
 __all__ = [
@@ -79,4 +80,6 @@ __all__ = [
     "MetadataVerificationRegistry",
     "MetadataBackendEntry",
     "MetadataBackendRegistry",
+    "RegistryContainer",
 ]
+

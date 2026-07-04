@@ -71,3 +71,26 @@ class MetadataBackendEntry(RegistryEntry):
 
 class MetadataBackendRegistry(GenericRegistry[MetadataBackendEntry]):
     pass
+
+
+class RegistryContainer:
+    """Container for all metadata registries, owned by Runtime."""
+    def __init__(self) -> None:
+        self.capabilities = MetadataCapabilityRegistry()
+        self.execution_modes = MetadataExecutionModeRegistry()
+        self.execution_profiles = MetadataExecutionProfileRegistry()
+        self.adapters = MetadataAdapterRegistry()
+        self.plugins = MetadataPluginRegistry()
+        self.verifications = MetadataVerificationRegistry()
+        self.backends = MetadataBackendRegistry()
+
+    def lock_all(self) -> None:
+        """Lock all registered metadata registries to make them immutable."""
+        self.capabilities.lock()
+        self.execution_modes.lock()
+        self.execution_profiles.lock()
+        self.adapters.lock()
+        self.plugins.lock()
+        self.verifications.lock()
+        self.backends.lock()
+

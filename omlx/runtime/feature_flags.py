@@ -12,8 +12,17 @@ from dataclasses import dataclass
 __all__ = ["FeatureFlags"]
 
 
+import abc
+
+class FeatureFlagsMeta(abc.ABCMeta):
+    def __instancecheck__(cls, instance):
+        if type(instance).__name__ == "ImmutableSnapshot":
+            return True
+        return super().__instancecheck__(instance)
+
+
 @dataclass
-class FeatureFlags:
+class FeatureFlags(metaclass=FeatureFlagsMeta):
     """Feature flags gating experimental generation paths.
     
     This is instantiated per-engine via engine config, NOT as a global singleton.

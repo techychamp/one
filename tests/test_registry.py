@@ -129,3 +129,15 @@ def test_thread_safety():
     reg = MetadataCapabilityRegistry()
     reg.lock()
     reg.shutdown()
+
+def test_registry_container():
+    from omlx.registry.core import RegistryContainer
+    from omlx.registry import RegistryPhase
+    container = RegistryContainer()
+    assert container.capabilities._phase == RegistryPhase.BUILDING
+    
+    container.lock_all()
+    assert container.capabilities._phase == RegistryPhase.LOCKED
+    assert container.backends._phase == RegistryPhase.LOCKED
+
+
