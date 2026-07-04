@@ -37,27 +37,40 @@ The architecture must allow external plugins to provide new functionality withou
 
 **Crucially, the `PluginManager` must NOT know about specific plugin types.** It should not branch logic based on whether a plugin is a "Backend Plugin" or a "Model Adapter Plugin". Everything is simply a generic "Plugin" that registers components into specific Extension Points.
 
-### Plugin Taxonomy (Via Extension Points)
-Instead of rigidly typed plugins, plugins register objects against stable Extension Points. Examples include:
+### Contributing Descriptors, not Implementations
+Plugins should not directly provide implementation objects (e.g., `Plugin -> ExecutionBackend`). Instead, they contribute **Metadata Descriptors**.
+The execution chain is abstract:
+`Plugin -> Descriptor -> ExecutionPlanner -> Resolver -> ExecutionBackend`
 
-- **ExecutionBackendExtension**: Provides new `ExecutionBackend` and `ExecutionPipeline` implementations.
-- **ModelDiscoveryExtension**: Custom providers to identify and categorize models.
-- **VerificationExtension**: Adds custom stages, assets, or assertions to the verification pipeline.
-- **APIExtension**: Registers new FastAPI routers/endpoints.
-- **CLIExtension**: Registers new CLI commands.
+The ExecutionPlanner remains fully in control of the runtime strategy, with the Plugin merely providing the declarative instructions (Descriptors) on how to handle specific capabilities.
+
+### Plugin Taxonomy (Via Extension Points)
+Instead of rigidly typed plugins, plugins register objects against stable Extension Points. **Once registered, Extension objects are immutable.** This guarantees deterministic registration and behavior throughout the plugin's lifecycle. Examples include:
+
+- **ExecutionBackendExtension**: Declaratively specifies new `ExecutionBackend` mappings.
+- **ModelDiscoveryExtension**: Declarative rules or providers to identify and categorize models.
+- **VerificationExtension**: Declares custom stages, assets, or assertions to the verification pipeline.
+- **APIExtension**: Declaratively registers new FastAPI routers/endpoints.
+- **CLIExtension**: Declaratively registers new CLI commands.
 
 ---
 
-## 3. Plugin Descriptors & Manifest Specification
+## 3. Plugin Descriptors & Version Capabilities
 
-Every plugin must expose a **Plugin Descriptor** (e.g., via a standard `get_descriptor()` entry point or declarative manifest). This is structurally similar to ModelAdapters and is easy to inspect.
+Every plugin must expose a **Plugin Descriptor** (e.g., via a standard `get_descriptor()` entry point or declarative manifest).
 
 ### Descriptor Fields
 - **`plugin_id`**: Unique identifier (e.g., `com.example.omlx.rwkv_backend`).
-- **`version`**: Semantic versioning (e.g., `1.0.0`).
 - **`dependencies`**: Required plugins (e.g., `{"com.example.omlx.custom_cache": ">=1.0.0"}`).
 - **`feature_flags`**: Required feature flags to activate the plugin.
 - **`verification_metadata`**: Tags indicating what test suites must pass.
+
+### Version Capabilities (Finer-Grained than API versions)
+Instead of a single `API Version`, plugins declare versions against specific granular capabilities:
+- `Capability Version`: Which capability traits the plugin understands.
+- `Execution Graph Version`: Which version of the execution graph specification it targets.
+- `Planner Version`: Which planner iteration the plugin's descriptors map to.
+- `Descriptor Version`: The schema version of the plugin's own descriptor format.
 
 ### Execution Families
 Instead of specific boolean flags like `supports_diffusion=True`, plugins declare the **Execution Families** they support (aligning with RAES-008):
@@ -71,16 +84,26 @@ Instead of specific boolean flags like `supports_diffusion=True`, plugins declar
 
 ---
 
-## 4. Registration System
+## 4. Registration & Event System
 
-Plugins must register their components without introducing runtime branching in the core. The system relies on an Event/Hook Architecture and abstract Extension Points.
+Plugins must register their components without introducing runtime branching in the core. The system relies on an **Event/Hook Architecture** and abstract Extension Points.
 
+### Event System
+To prevent plugins from monkey-patching core lifecycle methods, the `PluginContext` exposes an explicit Event System. Plugins can subscribe to granular system events:
+- `Before Model Load`
+- `After Model Load`
+- `Before Execution`
+- `After Execution`
+- `Before Verification`
+- `Shutdown`
+
+### Registration
 - **Plugin Manager Interface**: The `PluginContext` abstracts away all registry internals. Plugins do NOT interact directly with `capability_registry` or `profile_registry`.
 - The interface exposes a unified registration method:
   - `context.register(ExecutionBackendExtension(...))`
   - `context.register(ModelDiscoveryExtension(...))`
 
-Runtime branching is avoided because the core simply iterates over registered Extension Point objects.
+Runtime branching is avoided because the core simply iterates over registered immutable Extension Point objects.
 
 ---
 
@@ -89,7 +112,7 @@ Runtime branching is avoided because the core simply iterates over registered Ex
 The plugin lifecycle includes state tracking and health monitoring.
 
 1. **Loaded**: The plugin module is located and imported via entry points.
-2. **Initialized**: Early startup logic and manifest validation.
+2. **Initialized**: Early startup logic and descriptor validation.
 3. **Healthy**: The plugin passes internal health checks (e.g., verifies Metal compatibility).
 4. **Active**: The plugin registers its Extension Points into the `PluginContext`.
 5. **Suspended**: The plugin is temporarily paused (e.g., memory constraints).
@@ -97,7 +120,7 @@ The plugin lifecycle includes state tracking and health monitoring.
 
 ### Lazy Activation
 Plugins should support **optional lazy activation**.
-For example, a `Diffusion Plugin` does not initialize heavy Metal kernels at startup. Instead, it waits until the first diffusion model is loaded, triggering an `Activate` hook.
+For example, a `Diffusion Plugin` does not initialize heavy Metal kernels at startup. Instead, it waits until the first diffusion model is loaded, triggering an `Activate` hook via the Event System (`Before Model Load`).
 
 ---
 
@@ -116,7 +139,7 @@ The runtime remains entirely generic, interacting only with protocol abstraction
 
 1. **Model Discovery**: Iterates through registered `ModelDiscoveryExtension` objects.
 2. **Capability Registry**: Maps the model to required Execution Families.
-3. **Execution Backend / Engine**: The core requests the backend mapped via an `ExecutionBackendExtension`. The plugin instantiates its custom `ExecutionBackend` and `ExecutionPipeline`.
+3. **Execution Backend / Engine**: The core queries the ExecutionPlanner, which maps the generic capabilities (via registered Plugin Descriptors) to resolve the `ExecutionBackend`.
 4. **Execution**: The Scheduler (remaining dumb) handles batching. The plugin's pipeline executes the forward pass.
 
 ---
@@ -139,9 +162,9 @@ Verification should not require core framework changes for new plugins.
 
 ### NEW Files
 - `omlx/plugins/manager.py`: Implements generic discovery, lifecycle (Loaded -> Shutdown), and dependency resolution.
-- `omlx/plugins/descriptor.py`: Defines the Plugin Descriptor schema.
-- `omlx/plugins/context.py`: The `PluginContext` providing the generic `register()` method.
-- `omlx/plugins/extensions.py`: Defines the stable ABIs for `ExecutionBackendExtension`, `ModelDiscoveryExtension`, etc.
+- `omlx/plugins/descriptor.py`: Defines the Plugin Descriptor schema and Version Capabilities.
+- `omlx/plugins/context.py`: The `PluginContext` providing the generic `register()` method and Event pub/sub.
+- `omlx/plugins/extensions.py`: Defines the stable, immutable ABIs for `ExecutionBackendExtension`, `ModelDiscoveryExtension`, etc.
 
 ### MODIFIED Files
 - `omlx/registry/plugin_discovery.py`: Deprecate/Merge into `manager.py`.
@@ -156,7 +179,7 @@ Verification should not require core framework changes for new plugins.
 ## 11. Risk Analysis
 - **Dependency Hell**: Version conflicts between multiple third-party plugins.
 - **API Stability**: Plugins depend on core Extension ABIs. Changes here break plugins.
-- **Monkey Patch Conflicts**: If two plugins attempt to monkey-patch `mlx_lm`, unpredictable behavior occurs.
+- **Monkey Patch Conflicts**: If two plugins attempt to monkey-patch `mlx_lm`, unpredictable behavior occurs. (Mitigated by the explicit Event System).
 
 ---
 
@@ -164,8 +187,8 @@ Verification should not require core framework changes for new plugins.
 
 1. **Discovery & Descriptor**: Create a mock plugin with a valid descriptor and verify it transitions to the `Loaded` state.
 2. **Dependency Resolution**: Construct mock plugins with circular dependencies and verify the system catches the error.
-3. **Registration Flow**: Verify a plugin can call `context.register(DummyExtension())` without knowing about the underlying registry.
-4. **Lifecycle**: Assert the full transition: Loaded -> Initialized -> Healthy -> Active -> Suspended -> Shutdown.
+3. **Registration Flow**: Verify a plugin can call `context.register(DummyExtension())` without knowing about the underlying registry. Ensure the Extension object is immutable after registration.
+4. **Lifecycle & Events**: Assert the full transition: Loaded -> Initialized -> Healthy -> Active -> Suspended -> Shutdown. Validate that subscribing to `Before Model Load` successfully triggers execution logic.
 
 ---
 
@@ -175,9 +198,9 @@ Verification should not require core framework changes for new plugins.
 ---
 
 ## 14. Implementation Recommendation
-1. Define the `PluginDescriptor`, `PluginContext`, and `Extension` base classes.
+1. Define the `PluginDescriptor`, `PluginContext` (with Event bus), and immutable `Extension` base classes.
 2. Implement the `PluginManager` generic lifecycle and DAG resolution.
-3. Migrate an existing feature (e.g., Experimental Diffusion) into an Extension object.
+3. Migrate an existing feature (e.g., Experimental Diffusion) into an Extension descriptor object.
 
 ---
 
@@ -196,6 +219,7 @@ graph TD
     subgraph Core
         C[Plugin Context]
         R1[Internal Registries...]
+        Planner[Execution Planner]
         C --> |Abstracts| R1
     end
 
@@ -205,9 +229,9 @@ graph TD
     end
 
     subgraph Extension Points
-        EBE[ExecutionBackendExtension]
-        MDE[ModelDiscoveryExtension]
-        VE[VerificationExtension]
+        EBE[ExecutionBackendExtension <br/> (Immutable)]
+        MDE[ModelDiscoveryExtension <br/> (Immutable)]
+        VE[VerificationExtension <br/> (Immutable)]
     end
 
     PM --> |Initializes| P1
@@ -218,6 +242,8 @@ graph TD
 
     P2 -.-> |Instantiates| MDE
     P2 -.-> |Calls context.register| C
+
+    C --> |Provides Descriptors| Planner
 ```
 
 ### Plugin Loading Lifecycle
@@ -237,13 +263,15 @@ stateDiagram-v2
     Shutdown --> [*]
 ```
 
-### Registration Flow
+### Registration Flow & Event Subscription
 ```mermaid
 graph LR
-    P[Plugin] -->|Creates| E[Extension Object]
+    P[Plugin] -->|Creates Immutable| E[Extension Descriptor Object]
     P --> |Calls| C[context.register]
+    P --> |Subscribes| Ev[context.on_event]
+    Ev --> |e.g., Before Execution| EM[Event Manager]
     C --> PM[Plugin Manager]
-    PM --> |Routes Extension to| IR[Internal Registry]
+    PM --> |Routes Descriptor to| Planner[Execution Planner]
 ```
 
 ### Runtime Interaction
@@ -251,25 +279,29 @@ graph LR
 sequenceDiagram
     participant Request
     participant Core
-    participant Extension as Registered Extension
+    participant Planner
+    participant Descriptor as Plugin Descriptor
     participant Backend
 
     Request->>Core: Process Model
-    Core->>Extension: Evaluate capabilities (Execution Families)
-    Extension-->>Core: Provide logic/factory
-    Core->>Backend: Execute pipeline
+    Core->>Planner: Request Execution Strategy
+    Planner->>Descriptor: Evaluate capabilities (Execution Families)
+    Descriptor-->>Planner: Provide metadata
+    Planner->>Backend: Resolve and Execute pipeline
     Backend-->>Request: Response
 ```
 
-### Dependency Graph Example
+### Event System Example
 ```mermaid
-graph TD
-    A[Core System]
-    B[Plugin: Custom Metal Backend]
-    C[Plugin: Metal Helper Lib]
-    D[Plugin: Optional UI Extensions]
+sequenceDiagram
+    participant System
+    participant EventBus
+    participant PluginA (Metrics)
+    participant PluginB (Cache)
 
-    A --> B
-    B --> |Requires| C
-    B -.-> |Optional| D
+    System->>EventBus: trigger("Before Model Load")
+    EventBus->>PluginB (Cache): on_before_model_load()
+    System->>System: Load Model Weights
+    System->>EventBus: trigger("After Model Load")
+    EventBus->>PluginA (Metrics): on_after_model_load()
 ```
