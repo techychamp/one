@@ -1,7 +1,6 @@
 import threading
 from typing import Dict, List, Optional, Type, Any, Set
 from .descriptor import PluginDescriptor, PluginLifecycleState
-from .context import PluginContext
 from .contracts import ExtensionPoint
 
 class PluginRegistry:
@@ -18,11 +17,11 @@ class PluginRegistry:
         # Map of plugin ID -> Lifecycle State
         self._plugin_states: Dict[str, PluginLifecycleState] = {}
 
-        # Map of plugin ID -> PluginContext
-        self._plugin_contexts: Dict[str, PluginContext] = {}
-
         # Map of Extension Class -> List of registered extension instances
+        # We explicitly store extensions here instead of extracting them from contexts
         self._extensions_by_type: Dict[Type[ExtensionPoint], List[ExtensionPoint]] = {}
+        # Also store extensions by plugin_id for bookkeeping if necessary
+        self._extensions_by_plugin: Dict[str, List[ExtensionPoint]] = {}
 
         self._is_sealed = False
 
@@ -46,8 +45,8 @@ class PluginRegistry:
         with self._lock:
             self._is_sealed = True
 
-    def register_plugin(self, descriptor: PluginDescriptor, context: PluginContext) -> None:
-        """Register a plugin with its descriptor and context."""
+    def register_plugin(self, descriptor: PluginDescriptor) -> None:
+        """Register a plugin with its descriptor."""
         with self._lock:
             self._check_sealed()
 
@@ -57,9 +56,19 @@ class PluginRegistry:
 
             self._descriptors[descriptor.plugin_id] = descriptor
             self._plugin_states[descriptor.plugin_id] = PluginLifecycleState.REGISTERED
-            self._plugin_contexts[descriptor.plugin_id] = context
+            self._extensions_by_plugin[descriptor.plugin_id] = []
             self._diagnostics["registration"][descriptor.plugin_id] = "Success"
             self._diagnostics["lifecycle"][descriptor.plugin_id] = PluginLifecycleState.REGISTERED.value
+
+    def register_extensions(self, plugin_id: str, extensions: List[ExtensionPoint]) -> None:
+        """Register instantiated extensions for a plugin."""
+        with self._lock:
+            self._check_sealed()
+            if plugin_id not in self._descriptors:
+                raise ValueError(f"Plugin ID {plugin_id} not found.")
+
+            self._extensions_by_plugin[plugin_id].extend(extensions)
+            # We will gather these by type in get_extensions dynamically
 
     def transition_state(self, plugin_id: str, new_state: PluginLifecycleState) -> None:
          """Transition the lifecycle state of a plugin."""
@@ -127,10 +136,9 @@ class PluginRegistry:
     def get_extensions(self, extension_type: Type[ExtensionPoint]) -> List[ExtensionPoint]:
         """Retrieve all registered extensions of a specific type."""
         with self._lock:
-            # We must gather extensions from all plugin contexts
             extensions = []
-            for context in self._plugin_contexts.values():
-                for ext in context.get_registered_extensions():
+            for plugin_extensions in self._extensions_by_plugin.values():
+                for ext in plugin_extensions:
                     if isinstance(ext, extension_type):
                         extensions.append(ext)
             return extensions

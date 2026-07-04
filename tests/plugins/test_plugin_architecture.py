@@ -1,8 +1,9 @@
 import pytest
 import threading
+from types import MappingProxyType
 
 from omlx.plugins.descriptor import PluginDescriptor, PluginCategory, PluginLifecycleState
-from omlx.plugins.context import PluginContext
+from omlx.plugins.context import PluginInitializationContext
 from omlx.plugins.registry import PluginRegistry
 from omlx.plugins.contracts import BackendPlugin
 
@@ -13,15 +14,27 @@ def test_plugin_descriptor_immutability():
         version="1.0.0",
         author="OMLX Team",
         description="A test plugin",
-        category=PluginCategory.BACKEND
+        category=PluginCategory.BACKEND,
+        dependencies={"plugin.b": "1.0"},
+        supported_compiler_versions=["v1", "v2"]
     )
 
+    # Check top-level immutability
     with pytest.raises(Exception):
         descriptor.name = "Modified Plugin"
 
+    # Check deep immutability
+    assert isinstance(descriptor.dependencies, MappingProxyType)
+    assert isinstance(descriptor.supported_compiler_versions, tuple)
+
+    with pytest.raises(TypeError):
+        descriptor.dependencies["plugin.c"] = "2.0"
+
+    with pytest.raises(AttributeError):
+        descriptor.supported_compiler_versions.append("v3")
+
 def test_plugin_registration():
     registry = PluginRegistry()
-    context = PluginContext(None, None, None, {}, {})
     descriptor = PluginDescriptor(
         plugin_id="com.omlx.test",
         name="Test",
@@ -31,14 +44,13 @@ def test_plugin_registration():
         category=PluginCategory.CAPABILITY
     )
 
-    registry.register_plugin(descriptor, context)
+    registry.register_plugin(descriptor)
 
     assert registry.get_descriptor("com.omlx.test") == descriptor
     assert registry.get_state("com.omlx.test") == PluginLifecycleState.REGISTERED
 
 def test_duplicate_registration_fails():
     registry = PluginRegistry()
-    context = PluginContext(None, None, None, {}, {})
     descriptor = PluginDescriptor(
         plugin_id="com.omlx.test",
         name="Test",
@@ -48,14 +60,13 @@ def test_duplicate_registration_fails():
         category=PluginCategory.CAPABILITY
     )
 
-    registry.register_plugin(descriptor, context)
+    registry.register_plugin(descriptor)
 
     with pytest.raises(ValueError):
-        registry.register_plugin(descriptor, context)
+        registry.register_plugin(descriptor)
 
 def test_registry_sealing():
     registry = PluginRegistry()
-    context = PluginContext(None, None, None, {}, {})
     descriptor = PluginDescriptor(
         plugin_id="com.omlx.test",
         name="Test",
@@ -68,7 +79,7 @@ def test_registry_sealing():
     registry.seal()
 
     with pytest.raises(RuntimeError):
-        registry.register_plugin(descriptor, context)
+        registry.register_plugin(descriptor)
 
     with pytest.raises(RuntimeError):
         registry.transition_state("com.omlx.test", PluginLifecycleState.LOADED)
@@ -83,9 +94,7 @@ def test_dependency_validation():
         dependencies={"plugin.b": "1.0"}
     )
 
-    # Plugin B (Missing)
-
-    registry.register_plugin(desc_a, PluginContext(None, None, None, {}, {}))
+    registry.register_plugin(desc_a)
     registry.validate_dependencies()
 
     assert registry.get_state("plugin.a") == PluginLifecycleState.FAILED
@@ -108,8 +117,8 @@ def test_circular_dependency():
         dependencies={"plugin.a": "1.0"}
     )
 
-    registry.register_plugin(desc_a, PluginContext(None, None, None, {}, {}))
-    registry.register_plugin(desc_b, PluginContext(None, None, None, {}, {}))
+    registry.register_plugin(desc_a)
+    registry.register_plugin(desc_b)
 
     registry.validate_dependencies()
 
@@ -125,15 +134,13 @@ class MockBackendExtension(BackendPlugin):
 
 def test_extension_lookup():
     registry = PluginRegistry()
-    context = PluginContext(None, None, None, {}, {})
     descriptor = PluginDescriptor(
         plugin_id="plugin.a", name="A", version="1.0", author="A", description="A", category=PluginCategory.BACKEND
     )
 
     ext = MockBackendExtension()
-    context.register_extension(ext)
-
-    registry.register_plugin(descriptor, context)
+    registry.register_plugin(descriptor)
+    registry.register_extensions("plugin.a", [ext])
 
     extensions = registry.get_extensions(BackendPlugin)
     assert len(extensions) == 1
@@ -146,8 +153,7 @@ def test_thread_safety():
         desc = PluginDescriptor(
             plugin_id=f"plugin.{i}", name=f"P{i}", version="1.0", author="A", description="D", category=PluginCategory.CAPABILITY
         )
-        ctx = PluginContext(None, None, None, {}, {})
-        registry.register_plugin(desc, ctx)
+        registry.register_plugin(desc)
         registry.transition_state(f"plugin.{i}", PluginLifecycleState.LOADED)
 
     threads = []

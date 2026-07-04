@@ -1,10 +1,9 @@
 # Pre-Commit Report
 
 - Verified that plugin architecture implementation adheres to memory constraints.
-- Verified that `omlx/plugins/descriptor.py` contains the required immutable `PluginDescriptor`.
-- Verified that `omlx/plugins/contracts.py` contains the required plugin extension points as protocols.
-- Verified that `omlx/plugins/context.py` provides the required immutable runtime state to plugins.
-- Verified that `omlx/plugins/registry.py` provides thread-safe discovery and management, and locks cleanly when sealed.
-- Verified that `omlx/plugins/manager.py` implements the generic plugin lifecycle.
-- Verified that tests for these new modules were implemented and successfully run within the container.
-- Wrote down documentation for the implementation: `docs/architecture/Plugin-Architecture-Audit.md` and `docs/architecture/Plugin-Framework-Walkthrough.md`.
+- Deep-freezing: Verified that `PluginDescriptor` now applies deep immutability to list and dict fields (via tuple and MappingProxyType).
+- Separation of Concerns: Verified that `PluginContext` is now split. `PluginContext` remains strictly read-only, and `PluginInitializationContext` provides write operations during the boot sequence.
+- Registry ownership: Verified that `PluginManager` no longer owns `PluginRegistry`, but instead receives it via dependency injection at initialization.
+- Phased discovery: Verified that `PluginManager` now distinctively separates `discover_plugins`, `load_plugins`, and `initialize_plugins`.
+- Tests: Verified that tests for these changes were written and successfully run via `PYTHONPATH=. pytest tests/plugins/`.
+- Documentation: Kept documentation files in check.
