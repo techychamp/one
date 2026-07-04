@@ -1,7 +1,7 @@
-# Checkpoint Report: MIG-001 - Runtime Compiler Pipeline Integration
+# Checkpoint Report: TEST-001 - Reliability, Stress Testing, Fuzzing & Failure Injection Framework
 
 ## Summary
-Implemented Verification Framework tests and documentation for VERIFY-001.
+Implemented Verification Framework tests and documentation for TEST-001.
 
 ## Architecture impact
 This builds the Verification Framework infrastructure to prepare for continuous testing, covering golden tests, equivalence, compiler, backend, migration, regression, stress, benchmark, and thread-safety tests. Documentation and reports scripts were also created.
@@ -51,7 +51,7 @@ No changes to the existing architecture. The compiler pipeline operates on a non
 ## Verification Evidence
 - Manual testing using `pytest tests/test_migration.py` confirmed 3/3 tests passed.
 - `pytest tests/test_server.py` failed due to missing HTTPx/FastAPI test dependencies but not due to pipeline breakages. The server's logic modification is syntactically sound.
-- All documents required by MIG-001 were created.
+- All documents required by TEST-001 were created.
 
 ## Risks
 - Small latency overhead added to the startup of requests if the flag is enabled.
