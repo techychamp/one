@@ -42,7 +42,7 @@ The runtime components (`Scheduler`, `EngineCore`, `ExecutionBackend`, `Executio
 
 ### Adapter Hierarchy: Behavior & Traits
 
-Adapters are organized around foundational execution behaviors rather than model taxonomy. Capabilities like Vision or MoE are mixed in as composable traits rather than top-level adapter classes.
+Adapters are organized around foundational execution behaviors rather than model taxonomy. Capabilities like Vision or MoE are treated as metadata plugins (traits) within the adapter's descriptor, rather than as Python mixins or top-level adapter classes.
 
 ```text
 BaseAdapter
@@ -58,10 +58,19 @@ BaseAdapter
         └──────── EncoderAdapter
 ```
 
-**Composition and Traits**:
-Instead of creating a `VisionMoEAdapter`, an autoregressive VLM with MoE layers would be represented as:
-`AutoregressiveAdapter` + `VisionTrait` + `MoETrait`.
-This highly scalable composition allows traits to handle specialized tokenizer rules or visual block masks independently of the primary execution mode.
+**Traits as Metadata**:
+Instead of creating a `VisionMoEAdapter` or using Python mixins, an autoregressive VLM with MoE layers is represented cleanly as an `AutoregressiveAdapter` whose immutable descriptor includes specific traits:
+```python
+AdapterDescriptor(
+    execution_family="autoregressive",
+    traits=[
+        VisionTrait(),
+        MoETrait(),
+        QuantizationTrait(),
+    ],
+)
+```
+Traits act as plugins that the capability resolver and planner can inspect to configure the execution graph.
 
 ### Lifecycle Phases
 
@@ -78,20 +87,28 @@ To prevent adapters from becoming bloated "god classes," the adapter contract is
 Instead of querying dozens of independent methods (e.g., `get_execution_hints()`), adapters expose a structured descriptor that defines exactly what the model is and what it needs.
 
 **AdapterDescriptor**:
-- `CapabilityDescriptor`: High-level traits (e.g., Vision, MoE).
+- `traits`: List of capabilities acting as metadata plugins (e.g., Vision, MoE).
 - `ExecutionHints`: Optimization flags, parallelization strategies.
 - `HardwareRequirements`: Memory bounds, required accelerator features.
 - `VerificationProfile`: Golden prompts, expected tolerances.
 - `PatchRequirements`: Declares which patches must be applied.
 
+**Immutability**:
+After the Loading phase, the `AdapterDescriptor` is frozen and becomes strictly immutable. This ensures the planner can safely cache it and rely on its state not mutating later in the lifecycle.
+
 ## 3. Patch Pipeline Plugins
 
-Monkey patches will no longer be monolithic `maybe_apply_...` functions. Instead, patches become isolated, reusable adapter plugins.
+Monkey patches will no longer be monolithic `maybe_apply_...` functions. Instead, patches become isolated, reusable adapter plugins managed by a dedicated Patch Pipeline.
 
 **Execution Flow**:
 `Adapter` → `Patch Pipeline` → `[Patch 1, Patch 2, ...]`
 
-Adapters declare a list of required `PatchRequirements` in their descriptor. The Patch Pipeline executes them sequentially during the Loading phase. This isolates side effects, makes patches reusable across adapters (e.g., `SDPAPatch`, `Llama4RoPEPatch`), and dramatically simplifies testing.
+The Patch Pipeline supports **ordering** and dependency management. Because some patches depend on others, patches can declare rules similar to the capability resolver:
+- `priority`: Integer sorting for execution order.
+- `dependencies`: Other patches that must run successfully first.
+- `before` / `after`: Declarative hooks for explicit ordering.
+
+This isolates side effects, makes patches reusable across adapters, and dramatically simplifies testing and verification.
 
 ## 4. Execution Graph Metadata
 
@@ -111,7 +128,8 @@ Long term, the explicit `AdapterFactory` will be phased out in favor of integrat
 **Component Resolution Flow**:
 `Model Discovery` → `Capability Resolver` → `Execution Planner` → `Adapter Resolver` → `Adapter Instantiation`
 
-This turns the Adapter into just another resolved component in the pipeline, completely decoupling model loading from the execution loop.
+**One-Time Initialization Extraction**:
+To prevent performance bottlenecks and tight coupling, the runtime and backend will *not* repeatedly ask the adapter questions during execution (e.g., no `adapter.get_descriptor().cache_layout` on every forward pass). Instead, the Execution Planner extracts everything it needs from the immutable `AdapterDescriptor` exactly once during initialization, caches the configuration, and constructs the Execution Graph.
 
 ## 6. Future Execution Families Integration
 
@@ -138,9 +156,9 @@ This automatically supplies `verification_framework.md` with:
 ## 9. Verification Plan (No Implementation)
 
 - **Phase Isolation Test**: Ensure Configuration phase can be run independently of Loading phase.
-- **Descriptor Verification**: Validate `AdapterDescriptor` payload structure matches strict schemas.
-- **Patch Pipeline Test**: Verify isolated patch plugins can be applied and verified without loading a full model.
-- **Resolver Flow Test**: Mock the `Adapter Resolver` to verify it correctly outputs an `AutoregressiveAdapter` with `VisionTrait` for a mock VLM.
+- **Descriptor Verification**: Validate `AdapterDescriptor` payload structure matches strict schemas and is immutable.
+- **Patch Pipeline Test**: Verify isolated patch plugins execute in the correct order respecting dependencies, before, and after rules.
+- **Resolver Flow Test**: Mock the `Adapter Resolver` to verify it correctly outputs an `AutoregressiveAdapter` with a `VisionTrait` metadata plugin for a mock VLM.
 
 ## 10. Files to Modify / Create
 
@@ -162,7 +180,7 @@ This automatically supplies `verification_framework.md` with:
 - `Server`
 
 ## 11. Recommendation for Next Checkpoint
-The next checkpoint should focus on implementing the lifecycle interface (`BaseAdapter`), the structured `AdapterDescriptor`, and the `Patch Pipeline`. We should port one simple model (e.g., standard dense autoregressive) to validate the resolver and patching behavior before addressing traits like Vision or MoE.
+The next checkpoint should focus on implementing the lifecycle interface (`BaseAdapter`), the structured immutable `AdapterDescriptor`, and the ordered `Patch Pipeline`. We should port one simple model (e.g., standard dense autoregressive) to validate the resolver and patching behavior before addressing traits like Vision or MoE.
 
 ## 12. Rollback Strategy
 
