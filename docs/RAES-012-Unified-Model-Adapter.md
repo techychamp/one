@@ -58,12 +58,12 @@ The repository makes decisions based on configuration fields rather than explici
 
 ---
 
-## Current Runtime Flow
+## Current Runtime Flow (Before Adapters)
 
 1. **Model Directory** (`/path/to/model`)
     ↓
 2. **Model Discovery** (`omlx/model_discovery.py: discover_models`)
-    * Reads `config.json`, applies heuristics to determine `ModelType` (`llm`, `vlm`, `embedding`, etc.).
+    * Reads `config.json`, applies heuristics and string matching to guess `ModelType` (`llm`, `vlm`, `embedding`, etc.).
     ↓
 3. **Config Parsing & Capability Inference** (`omlx/runtime/capabilities.py: infer_capabilities`)
     * Reads `model_type`, looks for substrings to guess capabilities (`supports_diffusion=True`).
@@ -92,26 +92,57 @@ The Model Adapter acts as the singular translation layer between the raw model a
 
 ### Unified Adapter Interface (`BaseModelAdapter`)
 
+Adapters do not inspect raw configs. Instead, Discovery produces a `ModelDescriptor` which the adapter consumes. The adapter describes its requirements via a unified `AdapterDescriptor`.
+
 ```python
+@dataclass(frozen=True)
+class ModelDescriptor:
+    """Normalized representation of model artifacts produced by Discovery."""
+    path: Path
+    config: dict
+    generation_config: dict
+    tokenizer_config: dict
+
+@dataclass(frozen=True)
+class AdapterDescriptor:
+    """Immutable definition of an adapter's capabilities and requirements."""
+    identity: IdentityMetadata
+    capabilities: ModelCapabilities
+    execution: ExecutionMetadata
+    attention: AttentionMetadata
+    cache: CacheMetadata
+    hardware: HardwareMetadata
+    verification: VerificationMetadata
+
 class BaseModelAdapter(Protocol):
-    """Authoritative source describing a model's requirements and capabilities."""
+    """Authoritative source describing a model's lifecycle and capabilities."""
 
     # 1. Identity & Matching
     @classmethod
-    def can_adapt(cls, config: dict, directory: Path) -> bool: ...
+    def can_adapt(cls, descriptor: ModelDescriptor) -> bool: ...
 
-    # 2. Capability Resolution
-    def resolve_capabilities(self, config: dict, generation_config: dict) -> ModelCapabilities: ...
+    # 2. Descriptor Resolution
+    def get_descriptor(self) -> AdapterDescriptor: ...
 
-    # 3. Execution Requirements
-    def get_supported_modes(self) -> list[GenerationMode]: ...
-    def get_preferred_mode(self) -> GenerationMode: ...
-    def get_required_attention_modes(self) -> list[AttentionMode]: ...
-    def get_cache_requirements(self) -> CacheRequirements: ...
+    # 3. Lifecycle Hooks
+    def pre_load(self, descriptor: ModelDescriptor) -> None: ...
+    def post_load(self, model: Any) -> Any: ...
+    def prepare_tokenizer(self, tokenizer: Any) -> Any: ...
+    def prepare_runtime(self, context: ExecutionContext) -> None: ...
+    def cleanup(self) -> None: ...
 
-    # 4. Model Modification / Instrumentation
-    def wrap_model(self, model: Any) -> Any: ...
+    # 4. Runtime Behavior
     def create_attention_mask(self, q_len: int, prefix_len: int, context: dict) -> Any: ...
+```
+
+### Traits Composability
+
+Adapters are organized by execution family (e.g., `AutoregressiveAdapter`), not by narrow model type. Capabilities like Vision or MoE are mixed in using **Traits**:
+
+```python
+class Qwen2VLAdapter(AutoregressiveAdapter, VisionTrait, MoETrait):
+    # Combines baseline AR execution with Vision-specific preprocessing and MoE routing logic.
+    pass
 ```
 
 ### Adapter Responsibilities
@@ -131,22 +162,19 @@ The following *do not* belong in the adapter:
 
 ## Capability Resolution
 
-The runtime should **never guess**. Capabilities are explicitly assembled by the adapter.
+The runtime should **never guess**. Capabilities are explicitly assembled by the adapter using normalized inputs.
 
 ```
-config.json + generation_config.json + tokenizer_config.json + directory metadata
+Model Directory
    ↓
-[ Adapter.resolve_capabilities() ]
+[ Model Discovery normalizes artifacts ]
    ↓
-ModelCapabilities (Explicit, immutable dataclass)
+ModelDescriptor (config, generation_config, tokenizer_config)
+   ↓
+[ Adapter.get_descriptor() ]
+   ↓
+AdapterDescriptor (Contains explicit ModelCapabilities)
 ```
-
-**Example:**
-The `NemotronAdapter` explicitly returns:
-`ModelCapabilities(supports_autoregressive=False, supports_diffusion=True, supports_streaming=False)`
-instead of `infer_capabilities` checking if `"nemotron"` is in the model name.
-
----
 
 ## Execution Mode Resolution
 
@@ -179,21 +207,18 @@ class AdapterRegistry:
     def register(self, adapter_cls: type[BaseModelAdapter]):
         self._adapters.insert(0, adapter_cls) # LIFO priority
 
-    def get_adapter(self, config: dict, directory: Path) -> type[BaseModelAdapter]:
+    def resolve_adapter(self, descriptor: ModelDescriptor) -> type[BaseModelAdapter]:
         for adapter in self._adapters:
-            if adapter.can_adapt(config, directory):
+            if adapter.can_adapt(descriptor):
                 return adapter
         return DefaultAutoregressiveAdapter
 ```
-
-Adapters register themselves (e.g., `LlamaAdapter`, `NemotronAdapter`, `QwenVLMAdapter`).
-
----
 
 ## Future Compatibility
 
 This architecture supports future integrations purely by adding a new adapter class:
 
+*   **Nemotron Triage**: Exists via a `TriageTrait` composed with an adapter, declaring `GenerationMode.TRIAGE` support and custom scoring requirements without impacting default execution.
 *   **Nemotron Labs Diffusion**: Exists via `NemotronAdapter` returning `GenerationMode.DIFFUSION` and providing custom block masking.
 *   **DiffusionGemma / Refinement Loop**: `DiffusionGemmaAdapter` requests `GenerationMode.DIFFUSION` but returns different `CacheRequirements` and `AttentionMode.BIDIRECTIONAL`. The `DiffusionStrategy` and pipelines handle the execution; the scheduler remains untouched.
 *   **Streaming MoE**: `StreamingMoEAdapter` requests standard autoregressive generation but wraps the model to replace standard MLX layers with custom MoE kernels.
