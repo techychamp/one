@@ -1,18 +1,40 @@
 import re
 
-with open("omlx/optimization/manager.py", "r") as f:
+with open("omlx/plugins/manager.py", "r") as f:
     content = f.read()
 
-content = content.replace("def get_execution_order(self) -> List[BasePass]:", "def get_execution_order(self, stage=None) -> List[BasePass]:")
+content = content.replace("from .descriptor import PluginDescriptor, PluginLifecycleState", "from .descriptor import PluginDescriptor, PluginLifecycleState\nfrom .compatibility import CompatibilityNegotiator")
 
-new_code = """        passes = self.get_registered_passes()
+validation_mod = """    def validate_and_seal(self) -> None:
+        \"\"\"
+        Phase 4: Validate dependency graph, compatibility, and seal registry.
+        \"\"\"
+        self._registry.validate_dependencies()
 
-        if stage is not None:
-            passes = [p for p in passes if stage in p.supported_stages]
+        # Compatibility check
+        negotiator = CompatibilityNegotiator(
+            self._registry,
+            current_compiler_version="1.0.0", # TODO: Get from context
+            current_runtime_version="1.0.0"
+        )
 
-        # Validation"""
+        descriptors = list(self._registry._descriptors.values())
+        compatibility_diagnostics = negotiator.check_compatibility(descriptors)
 
-content = content.replace("        passes = self.get_registered_passes()\n\n        # Validation", new_code)
+        # Merge diagnostics
+        self._registry._diagnostics["compatibility"] = compatibility_diagnostics
 
-with open("omlx/optimization/manager.py", "w") as f:
+        # If conflicts exist, transition to failed
+        for pid in compatibility_diagnostics["version_conflicts"]:
+             if pid in self._registry._descriptors:
+                 self._registry.transition_state(pid, PluginLifecycleState.FAILED)"""
+
+content = content.replace("""    def validate_and_seal(self) -> None:
+        \"\"\"
+        Phase 4: Validate dependency graph and seal registry.
+        \"\"\"
+        self._registry.validate_dependencies()""", validation_mod)
+
+
+with open("omlx/plugins/manager.py", "w") as f:
     f.write(content)

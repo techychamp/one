@@ -151,6 +151,24 @@ class PluginRegistry:
          with self._lock:
               return self._plugin_states.get(plugin_id)
 
+
+    def get_by_capability(self, capability) -> List[PluginDescriptor]:
+        with self._lock:
+            return [desc for desc in self._descriptors.values() if capability in desc.capabilities]
+
+    def get_by_priority(self, priority) -> List[PluginDescriptor]:
+        with self._lock:
+            return [desc for desc in self._descriptors.values() if desc.priority == priority]
+
+    def get_extensions_by_capability(self, capability) -> List[ExtensionPoint]:
+        with self._lock:
+            extensions = []
+            for exts in self._extensions_by_plugin.values():
+                for ext in exts:
+                    if capability in ext.capabilities:
+                        extensions.append(ext)
+            return extensions
+
     def generate_diagnostics_report(self) -> Dict[str, Any]:
         """Return the collected diagnostics report."""
         with self._lock:

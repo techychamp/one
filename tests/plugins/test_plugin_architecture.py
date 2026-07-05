@@ -2,7 +2,7 @@ import pytest
 import threading
 from types import MappingProxyType
 
-from omlx.plugins.descriptor import PluginDescriptor, PluginCategory, PluginLifecycleState
+from omlx.plugins.descriptor import PluginDescriptor, PluginCategory, PluginLifecycleState, PluginPriority, PluginCapability
 from omlx.plugins.context import PluginInitializationContext
 from omlx.plugins.registry import PluginRegistry
 from omlx.plugins.contracts import BackendPlugin
@@ -167,3 +167,19 @@ def test_thread_safety():
 
     for i in range(100):
         assert registry.get_state(f"plugin.{i}") == PluginLifecycleState.LOADED
+
+def test_registry_rich_queries():
+    registry = PluginRegistry()
+    desc1 = PluginDescriptor("p1", "P1", "1", "A", "D", PluginCategory.CAPABILITY, priority=PluginPriority.CORE, capabilities=[PluginCapability.COMPILER_EXTENSION])
+    desc2 = PluginDescriptor("p2", "P2", "1", "A", "D", PluginCategory.CAPABILITY, priority=PluginPriority.EXPERIMENTAL, capabilities=[PluginCapability.PLANNER_EXTENSION])
+
+    registry.register_plugin(desc1)
+    registry.register_plugin(desc2)
+
+    core_plugins = registry.get_by_priority(PluginPriority.CORE)
+    assert len(core_plugins) == 1
+    assert core_plugins[0].plugin_id == "p1"
+
+    compiler_plugins = registry.get_by_capability(PluginCapability.COMPILER_EXTENSION)
+    assert len(compiler_plugins) == 1
+    assert compiler_plugins[0].plugin_id == "p1"
