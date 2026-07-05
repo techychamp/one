@@ -10,7 +10,7 @@
   "execution_hints": {},
   "hardware_requirements": [],
   "planner_metadata": {
-    "planning_time_ms": 0.010728836059570312,
+    "planning_time_ms": 0.01621246337890625,
     "cache_key": "plan_f59ce4e858ab9f370ad3fb2628c2a2696ff9370586f85e8888fda540f3e1792a"
   }
 }
