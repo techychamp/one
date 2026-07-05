@@ -5,7 +5,7 @@ from .interfaces import ExecutionDispatcher, GraphExecutor, ExecutionExecutor
 from .context import ExecutionContext
 from .diagnostics import ExecutionTimeline, BackendInvocationReport, ExecutionReport
 from .statistics import ExecutionStatistics
-from .dispatcher import SequentialExecutionDispatcher
+from .dispatcher import SequentialExecutionDispatcher, ParallelExecutionDispatcher
 from .graph_executor import DeterministicGraphExecutor
 from .executor import ImmutableExecutionExecutor
 from .engine import ExecutionEngine
@@ -22,6 +22,7 @@ __all__ = [
     "ExecutionReport",
     "ExecutionStatistics",
     "SequentialExecutionDispatcher",
+    "ParallelExecutionDispatcher",
     "DeterministicGraphExecutor",
     "ImmutableExecutionExecutor",
     "ExecutionEngine"

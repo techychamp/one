@@ -12,7 +12,7 @@ from .context import ExecutionContext
 from .interfaces import ExecutionExecutor, GraphExecutor, ExecutionDispatcher
 from .executor import ImmutableExecutionExecutor
 from .graph_executor import DeterministicGraphExecutor
-from .dispatcher import SequentialExecutionDispatcher
+from .dispatcher import SequentialExecutionDispatcher, ParallelExecutionDispatcher
 from omlx.runtime.observability import get_observer
 
 logger = logging.getLogger("omlx.execution.engine")
@@ -24,7 +24,7 @@ class ExecutionEngine:
     def __init__(self, executor: ExecutionExecutor = None):
         if executor is None:
             # Construct default composition
-            dispatcher = SequentialExecutionDispatcher()
+            dispatcher = ParallelExecutionDispatcher()
             graph_executor = DeterministicGraphExecutor(dispatcher)
             self._executor = ImmutableExecutionExecutor(graph_executor)
         else:
