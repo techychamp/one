@@ -22,3 +22,4 @@ class ExecutionContext:
     backend_selection: Optional[Any] = None
     diagnostics: Optional[Any] = None
     statistics: Optional[Any] = None
+    adapter: Optional[Any] = None

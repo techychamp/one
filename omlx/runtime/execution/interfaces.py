@@ -14,7 +14,7 @@ class ExecutionDispatcher(abc.ABC):
     Dispatches graph operations sequentially via BackendAdapters without scheduling.
     """
     @abc.abstractmethod
-    def dispatch(self, graph: BackendOperationGraph, context: ExecutionContext) -> ExecutionResult:
+    def dispatch(self, graph: BackendOperationGraph, context: ExecutionContext, execution_order=None) -> ExecutionResult:
         pass
 
 class GraphExecutor(abc.ABC):

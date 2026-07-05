@@ -1,28 +1,9 @@
-# SPDX-License-Identifier: Apache-2.0
-"""
-Graph Executor for OMLX Execution Engine.
-"""
+import re
 
-from typing import Any
-import logging
-import time
+with open('omlx/runtime/execution/graph_executor.py', 'r') as f:
+    content = f.read()
 
-from .interfaces import GraphExecutor, ExecutionDispatcher
-from .types import ExecutionResult, ExecutionStatus
-from .context import ExecutionContext
-from .artifacts import BackendOperationGraph
-from .statistics import ExecutionStatistics
-
-logger = logging.getLogger("omlx.execution.graph_executor")
-
-class DeterministicGraphExecutor(GraphExecutor):
-    """
-    Validates and traverses BackendOperationGraph, invoking ExecutionDispatcher.
-    """
-    def __init__(self, dispatcher: ExecutionDispatcher):
-        self.dispatcher = dispatcher
-
-    def traverse_and_execute(self, graph: BackendOperationGraph, context: ExecutionContext) -> ExecutionResult:
+new_traverse = """    def traverse_and_execute(self, graph: BackendOperationGraph, context: ExecutionContext) -> ExecutionResult:
         logger.debug("GraphExecutor validating and traversing graph")
 
         start_time = time.time()
@@ -79,8 +60,8 @@ class DeterministicGraphExecutor(GraphExecutor):
         # as we are constrained by the existing interface.
 
         # Actually, let's just make the dispatcher iterate over execution_order
-        # setattr removed
-        dispatch_result = self.dispatcher.dispatch(graph, context, execution_order=execution_order)
+        setattr(context, '_execution_order', execution_order)
+        dispatch_result = self.dispatcher.dispatch(graph, context)
 
         end_time = time.time()
         duration_ms = (end_time - start_time) * 1000
@@ -103,4 +84,14 @@ class DeterministicGraphExecutor(GraphExecutor):
             diagnostics=dispatch_result.diagnostics,
             statistics=stats,
             execution_duration_ms=duration_ms
-        )
+        )"""
+
+content = re.sub(
+    r'    def traverse_and_execute\(self, graph: BackendOperationGraph, context: ExecutionContext\) -> ExecutionResult:.*',
+    new_traverse,
+    content,
+    flags=re.DOTALL
+)
+
+with open('omlx/runtime/execution/graph_executor.py', 'w') as f:
+    f.write(content)

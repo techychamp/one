@@ -17,6 +17,7 @@ from omlx.runtime.builder import RuntimeBuilder, FeatureFlags
 @dataclass
 class MockGraph:
     operations: dict
+    roots: tuple = ()
 
 def test_execution_engine_initialization():
     engine = ExecutionEngine()
@@ -30,8 +31,16 @@ def test_execution_engine_missing_graph():
 
 def test_execution_engine_valid_graph():
     engine = ExecutionEngine()
-    graph = MockGraph(operations={"op1": "val1"})
-    context = ExecutionContext(request_context=Mock(), backend_operation_graph=graph)
+
+    mock_op = MagicMock()
+    mock_op.dependencies = []
+    graph = MockGraph(operations={"op1": mock_op}, roots=("op1",))
+
+    mock_adapter = MagicMock()
+    mock_adapter.execute.return_value = "node_output"
+
+    context = ExecutionContext(request_context=Mock(), backend_operation_graph=graph, adapter=mock_adapter)
+
     result = engine.execute(context)
     assert result.status == ExecutionStatus.COMPLETED
     assert result.model_output["operations"] == 1
@@ -40,11 +49,22 @@ def test_execution_engine_valid_graph():
 
 def test_dispatcher_mock():
     dispatcher = SequentialExecutionDispatcher()
-    graph = MockGraph(operations={"op1": "val1", "op2": "val2"})
-    context = ExecutionContext(request_context=Mock(), backend_operation_graph=graph)
-    result = dispatcher.dispatch(graph, context)
+
+    mock_op1 = MagicMock()
+    mock_op1.dependencies = []
+    mock_op2 = MagicMock()
+    mock_op2.dependencies = ["op1"]
+    graph = MockGraph(operations={"op1": mock_op1, "op2": mock_op2}, roots=("op1",))
+
+    mock_adapter = MagicMock()
+    mock_adapter.execute.return_value = "node_output"
+
+    context = ExecutionContext(request_context=Mock(), backend_operation_graph=graph, adapter=mock_adapter)
+
+    result = dispatcher.dispatch(graph, context, execution_order=['op1', 'op2'])
     assert result.status == ExecutionStatus.COMPLETED
     assert result.model_output["operations"] == 2
+    assert mock_adapter.execute.call_count == 2
 
 def test_runtime_builder_integration():
     builder = RuntimeBuilder()
@@ -64,7 +84,10 @@ def test_runtime_execute_request():
     # Mock compiler service
     runtime.compiler_service = MagicMock()
     mock_translation_result = MagicMock()
-    mock_translation_result.backend_graph = MockGraph(operations={"op1": "val1"})
+
+    mock_op = MagicMock()
+    mock_op.dependencies = []
+    mock_translation_result.backend_graph = MockGraph(operations={"op1": mock_op}, roots=("op1",))
     runtime.compiler_service.run_compilation.return_value = mock_translation_result
 
     request = MagicMock()
