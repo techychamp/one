@@ -38,7 +38,6 @@ class FeatureFlags(metaclass=FeatureFlagsMeta):
     COMPILER_BACKEND_GRAPH_ENABLED: bool = False
     COMPILER_RUNTIME_ENABLED: bool = False
 
-
     @classmethod
     def from_env(cls) -> FeatureFlags:
         """Read flags from OMLX_FEATURE_* environment variables."""
@@ -58,4 +57,5 @@ class FeatureFlags(metaclass=FeatureFlagsMeta):
             LEGACY_RUNTIME_ENABLED=os.getenv("OMLX_FEATURE_LEGACY_RUNTIME_ENABLED", "0") == "1",
             COMPILER_CONTEXT_ENABLED=os.getenv("OMLX_FEATURE_COMPILER_CONTEXT_ENABLED", "0") == "1",
             COMPILER_BACKEND_GRAPH_ENABLED=os.getenv("OMLX_FEATURE_COMPILER_BACKEND_GRAPH_ENABLED", "0") == "1",
+            COMPILER_RUNTIME_ENABLED=os.getenv("OMLX_FEATURE_COMPILER_RUNTIME_ENABLED", "0") == "1",
         )
