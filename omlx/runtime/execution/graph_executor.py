@@ -54,7 +54,7 @@ class DeterministicGraphExecutor(GraphExecutor):
             logger.warning(f"Graph traversal incomplete: cycle detected or missing operations. Traversed {len(execution_order)}/{len(operations)}")
 
         # Pass ordered nodes to dispatcher
-        dispatch_result = self.dispatcher.dispatch(graph, context, execution_order=execution_order)
+        dispatch_result = self.dispatcher.dispatch(graph, context, execution_order=execution_order, schedule=schedule)
 
         end_time = time.time()
         duration_ms = (end_time - start_time) * 1000

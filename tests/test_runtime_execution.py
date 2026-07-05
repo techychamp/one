@@ -120,3 +120,76 @@ def test_legacy_fallback():
 
     with pytest.raises(NotImplementedError):
         runtime.execute_request(request)
+
+def test_parallel_execution_dispatcher():
+    from omlx.runtime.execution.dispatcher import ParallelExecutionDispatcher
+    from omlx.runtime.execution.context import ExecutionContext
+    from omlx.runtime.execution.types import ExecutionStatus
+    from omlx.runtime.scheduling.schedule import ExecutionSchedule
+    from omlx.runtime.scheduling.group import ExecutionGroup
+
+    dispatcher = ParallelExecutionDispatcher(max_workers=2)
+
+    mock_op1 = MagicMock()
+    mock_op2 = MagicMock()
+    mock_op3 = MagicMock()
+
+    graph = MockGraph(operations={"op1": mock_op1, "op2": mock_op2, "op3": mock_op3})
+
+    import threading
+    lock = threading.Lock()
+    execution_record = []
+
+    def mock_execute(op, context):
+        import time
+        time.sleep(0.01) # to simulate some work and ensure threads interleave
+        with lock:
+            execution_record.append(op)
+        return "output"
+
+    mock_adapter = MagicMock()
+    mock_adapter.execute.side_effect = mock_execute
+
+    context = ExecutionContext(request_context=Mock(), adapter=mock_adapter)
+
+    # group1: op1 and op2 (parallel), group2: op3
+    group1 = ExecutionGroup(group_id="g1", operations=["op1", "op2"])
+    group2 = ExecutionGroup(group_id="g2", operations=["op3"])
+    schedule = ExecutionSchedule(execution_groups=[group1, group2])
+
+    result = dispatcher.dispatch(graph, context, schedule=schedule)
+
+    assert result.status == ExecutionStatus.COMPLETED
+    assert result.model_output["operations"] == 3
+    assert result.model_output["last_output"] == "output"
+
+    assert len(execution_record) == 3
+    # op3 must run after op1 and op2 because it's in a later group
+    assert execution_record[2] == mock_op3
+
+def test_parallel_execution_dispatcher_failure():
+    from omlx.runtime.execution.dispatcher import ParallelExecutionDispatcher
+    from omlx.runtime.execution.context import ExecutionContext
+    from omlx.runtime.execution.types import ExecutionStatus
+    from omlx.runtime.scheduling.schedule import ExecutionSchedule
+    from omlx.runtime.scheduling.group import ExecutionGroup
+
+    dispatcher = ParallelExecutionDispatcher(max_workers=2)
+
+    mock_op1 = MagicMock()
+    graph = MockGraph(operations={"op1": mock_op1})
+
+    def mock_execute_fail(op, context):
+        raise ValueError("Simulated failure")
+
+    mock_adapter = MagicMock()
+    mock_adapter.execute.side_effect = mock_execute_fail
+
+    context = ExecutionContext(request_context=Mock(), adapter=mock_adapter)
+    group1 = ExecutionGroup(group_id="g1", operations=["op1"])
+    schedule = ExecutionSchedule(execution_groups=[group1])
+
+    result = dispatcher.dispatch(graph, context, schedule=schedule)
+
+    assert result.status == ExecutionStatus.FAILED
+    assert result.model_output is None
