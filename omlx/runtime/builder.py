@@ -192,6 +192,7 @@ class Runtime:
         timeout: float = None,
     ) -> Any:
         import time
+        import uuid
         # intentional limitation: a single runtime-wide lock prevents continuous batching and concurrent sessions on a single instance
         with self._generate_lock:
             try:
@@ -199,10 +200,16 @@ class Runtime:
             except ImportError:
                 mx = None
 
-            from omlx.runtime.streaming.types import StreamingToken, StreamCompletion
-            from omlx.runtime.streaming.events import StreamingEvent, StreamingEventType
-            from omlx.runtime.observability import get_observer
+        from omlx.runtime.streaming.types import StreamingToken, StreamCompletion
+        from omlx.runtime.streaming.events import StreamingEvent, StreamingEventType
+        from omlx.runtime.observability import get_observer, set_observer, reset_observer, Observer
+        from omlx.runtime.events import Event, RuntimeLifecycleEvent, EventCategory
 
+        run_id = str(uuid.uuid4())
+        session_observer = Observer(run_id=run_id)
+        set_observer(session_observer)
+
+        try:
             model_id, prompt, model, tokenizer = self._prepare_generation_context(request_context)
             translation_result = self._compile_request(model_id, request_context)
             backend_op_graph = getattr(translation_result, "backend_graph", getattr(translation_result, "backend_operation_graph", None))
@@ -213,6 +220,7 @@ class Runtime:
 
             generated_tokens = []
             generated_text = ""
+            status = "success"
 
             with get_observer().observe_phase("Execution", "Runtime", "generate"):
                 try:
@@ -253,18 +261,38 @@ class Runtime:
                     self.streaming_controller.complete_session(session.session_id, StreamCompletion.SUCCESS)
 
                 except Exception as e:
+                    status = "failed"
                     self.streaming_controller.complete_session(session.session_id, StreamCompletion.ERROR, e)
-                    with get_observer().observe_phase("Execution", "Runtime", "generate_error"):
-                        pass
+                    get_observer().add_diagnostic(f"Execution Error: {str(e)}")
+                    # don't re-raise as we need to return the session
                     import logging
                     logger = logging.getLogger("omlx.runtime")
                     logger.error(f"ExecutionError in generation loop: {e}")
 
+            end_time = time.time()
+            observation_session = session_observer.build_session(
+                end_time=end_time,
+                status=status,
+                generated_tokens=generated_tokens,
+                statistics={"total_tokens": len(generated_tokens), "max_tokens": max_tokens}
+            )
+
+            # Publish the ObservationSession to the event bus
+            if hasattr(self, 'event_bus'):
+                self.event_bus.publish(Event(
+                    type="observation_session_completed",
+                    category=EventCategory.RUNTIME,
+                    payload={"session": observation_session}
+                ))
+
             return {
                 "generated_text": generated_text,
                 "tokens": generated_tokens,
-                "session": session
+                "session": session,
+                "observation_session": observation_session
             }
+        finally:
+            reset_observer()
 
     def execute_request(self, request_context: Any) -> Any:
         """
