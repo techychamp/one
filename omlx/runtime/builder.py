@@ -383,6 +383,12 @@ class RuntimeBuilder:
         self._adapter_registry = AdapterRegistry()
         self._descriptor_registry = BackendDescriptorRegistry()
 
+        # MODEL-002: Universal Model Discovery
+        from omlx.framework.model_intelligence.registry import ModelRegistry
+        from omlx.framework.model_intelligence.discovery import ModelDiscoveryFramework
+        self._model_registry = ModelRegistry()
+        self._model_discovery = ModelDiscoveryFramework()
+
         # Register default MLX adapter and descriptor
         mlx_adapter = MLXAdapter()
         self._descriptor_registry.register("mlx", mlx_adapter.descriptor)
@@ -418,6 +424,9 @@ class RuntimeBuilder:
 
     def build(self) -> Runtime:
         """Construct the immutable context and wire up the Runtime."""
+        # MODEL-002: Freeze model registry
+        self._model_registry.freeze()
+
         # Lock registries before startup
         self._adapter_registry.lock()
         self._descriptor_registry.lock()
