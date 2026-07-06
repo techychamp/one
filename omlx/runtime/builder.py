@@ -58,6 +58,7 @@ class RuntimeContext:
     # Compiler Runtime Artifacts
     capability_descriptor: CapabilityDescriptor | None = None
     execution_plan: ExecutionPlan | None = None
+    strategy_resolver: Any = None
     compiler_session: Any = None
     logical_ir: Any = None
     physical_ir: Any = None
@@ -172,7 +173,10 @@ class Runtime:
             model=model,
             tokenizer=tokenizer
         )
-        return self.execution_engine.execute(exec_context)
+        from omlx.runtime.session import RuntimeSession
+        runtime_session = RuntimeSession.create()
+        runtime_session.execution_context = exec_context
+        return self.execution_engine.execute(runtime_session)
 
     def _sample_token(self, execution_result: Any, sampler: Any, mx: Any) -> tuple[int, str]:
         model_output = execution_result.model_output
@@ -221,12 +225,17 @@ class Runtime:
         strategy: str = "standard",
         **kwargs
     ) -> Any:
-        from omlx.runtime.generation import StandardGenerationStrategy, SpeculativeGenerationStrategy
+        model_id = getattr(request_context, "model_id", getattr(request_context, "model", "unknown"))
 
-        if strategy == "speculative":
-            strat = SpeculativeGenerationStrategy()
+        resolver = getattr(self.context, "strategy_resolver", None)
+        if resolver:
+            strat = resolver.resolve_strategy(model_id, strategy=strategy, **kwargs)
         else:
-            strat = StandardGenerationStrategy()
+            from omlx.runtime.generation import StandardGenerationStrategy, SpeculativeGenerationStrategy
+            if strategy == "speculative":
+                strat = SpeculativeGenerationStrategy()
+            else:
+                strat = StandardGenerationStrategy()
 
         kwargs["max_tokens"] = max_tokens
         kwargs["sampler"] = sampler
@@ -372,6 +381,9 @@ class RuntimeBuilder:
         from omlx.framework.model_intelligence.discovery import ModelDiscoveryFramework
         self._model_registry = ModelRegistry()
         self._model_discovery = ModelDiscoveryFramework()
+        
+        from omlx.runtime.generation.resolver import StrategyResolver
+        self._strategy_resolver = StrategyResolver(self._model_registry)
 
         # Register default MLX adapter and descriptor
         mlx_adapter = MLXAdapter()
@@ -422,7 +434,8 @@ class RuntimeBuilder:
             capability_resolver=self._capability_resolver,
             startup_metadata={"start_time": time.time()},
             adapter_registry=self._adapter_registry,
-            descriptor_registry=self._descriptor_registry
+            descriptor_registry=self._descriptor_registry,
+            strategy_resolver=self._strategy_resolver
         )
 
         runtime = Runtime(context)

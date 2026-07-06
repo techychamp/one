@@ -1,12 +1,12 @@
 {
   "events": [
     {
-      "id": "693ba42e-7484-44d0-a5b0-10053c4cea40",
-      "timestamp": 1783324532.2895,
+      "id": "3de0a1be-c0e9-4f52-a78f-6f10408cc0bd",
+      "timestamp": 1783360613.396536,
       "phase": "Test",
-      "duration_sec": 0.0012760162353515625,
-      "thread_id": 8335859328,
-      "session_id": "run002-obs-e8d0528d-f0f5-4714-9789-970061736e50",
+      "duration_sec": 0.0012569427490234375,
+      "thread_id": 8326356608,
+      "session_id": "run002-obs-f0238819-1bf8-4004-a3d2-ada7caeca1b3",
       "correlation_id": null,
       "metadata": {
         "component": "Phase7",

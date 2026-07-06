@@ -95,8 +95,12 @@ class CompilerPipelineRunner:
                         execution_family = plan_family if isinstance(plan_family, str) else str(getattr(plan_family, 'value', plan_family))
                         execution_mode = getattr(plan, "execution_mode", getattr(getattr(plan, "execution_plan", None), "execution_mode", "standard"))
 
+                        raw_backend = getattr(plan, "execution_backend", getattr(getattr(plan, "execution_plan", None), "execution_backend", "mlx"))
+                        # TODO(Debt): Temporary compatibility mapping until ExecutionProfile owns backend resolution.
+                        backend = "mlx" if raw_backend in ("autoregressive", "speculative", "diffusion", "embedding", "unknown") else raw_backend
+
                         adapter = self.runtime.adapter_registry.resolve(
-                            backend=getattr(plan, "execution_backend", getattr(getattr(plan, "execution_plan", None), "execution_backend", "mlx")),
+                            backend=backend,
                             hardware=hardware,
                             execution_family=execution_family,
                             execution_mode=execution_mode
@@ -251,8 +255,12 @@ class CompilerPipelineRunner:
                     execution_family = plan_family if isinstance(plan_family, str) else str(getattr(plan_family, 'value', plan_family))
                     execution_mode = getattr(plan, "execution_mode", getattr(getattr(plan, "execution_plan", None), "execution_mode", "standard"))
 
+                    raw_backend = getattr(plan, "execution_backend", getattr(getattr(plan, "execution_plan", None), "execution_backend", "mlx"))
+                    # TODO(Debt): Temporary compatibility mapping until ExecutionProfile owns backend resolution.
+                    backend = "mlx" if raw_backend in ("autoregressive", "speculative", "diffusion", "embedding", "unknown") else raw_backend
+
                     adapter = self.runtime.adapter_registry.resolve(
-                        backend=getattr(plan, "execution_backend", getattr(getattr(plan, "execution_plan", None), "execution_backend", "mlx")),
+                        backend=backend,
                         hardware=hardware,
                         execution_family=execution_family,
                         execution_mode=execution_mode

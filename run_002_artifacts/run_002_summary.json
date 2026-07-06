@@ -1,6 +1,6 @@
 {
-  "run_id": "40b9ca8f-fb4b-44dc-8be2-a608839fdca5",
-  "timestamp": "2026-07-06T07:55:29.228762Z",
+  "run_id": "e8fb4002-79ff-4bda-a2bc-52562baf2926",
+  "timestamp": "2026-07-06T17:56:50.191904Z",
   "model_name": "mlx-community/TinyLlama-1.1B-Chat-v1.0-4bit",
   "prompt": "The capital of France is",
   "real_model_used": true,
@@ -8,14 +8,14 @@
   "canonical_execution_path": true,
   "blocked": false,
   "blocked_reason": "",
-  "overall_success": true,
-  "generated_text": "Paris.ThecapitalofFranceisParis.ThecapitalofFranceisParis.ThecapitalofFrance",
-  "tokens_generated": 20,
+  "overall_success": false,
+  "generated_text": "",
+  "tokens_generated": 0,
   "phases": [
     {
       "phase": "Phase 1 \u2014 Model Intelligence",
       "passed": true,
-      "duration_ms": 0.7959579997987021,
+      "duration_ms": 0.8829589969536755,
       "notes": "",
       "artifacts": {
         "model_descriptor": {
@@ -118,7 +118,7 @@
     {
       "phase": "Phase 2 \u2014 Quantization Intelligence",
       "passed": true,
-      "duration_ms": 2.773207999780425,
+      "duration_ms": 4.07108400031575,
       "notes": "",
       "artifacts": {
         "quantization_descriptor": {
@@ -194,422 +194,29 @@
     },
     {
       "phase": "Phase 3 \u2014 Compilation",
-      "passed": true,
-      "duration_ms": 1.2158329991507344,
-      "notes": "",
-      "artifacts": {
-        "execution_plan": {
-          "execution_family": "autoregressive",
-          "execution_backend": "autoregressive",
-          "execution_mode": "streaming",
-          "execution_topology": "single_node",
-          "cache_strategy": "paged",
-          "scheduler_strategy": "continuous_batching",
-          "verification_stages": [],
-          "optimization_passes": [],
-          "execution_hints": {},
-          "hardware_requirements": [],
-          "planner_metadata": {
-            "planning_time_ms": 0.0040531158447265625,
-            "cache_key": "plan_f59ce4e858ab9f370ad3fb2628c2a2696ff9370586f85e8888fda540f3e1792a"
-          }
-        },
-        "logical_ir": {
-          "nodes": {
-            "node_prefill": {
-              "id": "node_prefill",
-              "node_type": "prefill",
-              "dependencies": [],
-              "metadata": {}
-            },
-            "node_sample": {
-              "id": "node_sample",
-              "node_type": "sample",
-              "dependencies": [
-                "node_prefill"
-              ],
-              "metadata": {}
-            },
-            "node_forward": {
-              "id": "node_forward",
-              "node_type": "forward",
-              "dependencies": [
-                "node_sample"
-              ],
-              "metadata": {}
-            },
-            "node_verify": {
-              "id": "node_verify",
-              "node_type": "verify",
-              "dependencies": [
-                "node_forward"
-              ],
-              "metadata": {}
-            },
-            "node_emit": {
-              "id": "node_emit",
-              "node_type": "emit",
-              "dependencies": [
-                "node_verify"
-              ],
-              "metadata": {}
-            }
-          },
-          "roots": [
-            "node_emit"
-          ],
-          "metadata": {
-            "execution_mode": "streaming",
-            "execution_backend": "autoregressive",
-            "cache_key": "ir_0ebfaa10d67ed690055fcda0bcf56f6ca378814ec7292a7888b30620807ba33c"
-          }
-        },
-        "physical_ir": {
-          "operations": {
-            "node_prefill": {
-              "id": "node_prefill",
-              "operation_type": "noop",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [],
-              "execution_family": null,
-              "metadata": {
-                "original_logical_node": "prefill"
-              }
-            },
-            "node_sample": {
-              "id": "node_sample",
-              "operation_type": "sampling",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [
-                "node_prefill"
-              ],
-              "execution_family": null,
-              "metadata": {
-                "original_logical_node": "sample"
-              }
-            },
-            "node_forward": {
-              "id": "node_forward",
-              "operation_type": "forward",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [
-                "node_sample"
-              ],
-              "execution_family": null,
-              "metadata": {
-                "original_logical_node": "forward"
-              }
-            },
-            "node_verify": {
-              "id": "node_verify",
-              "operation_type": "noop",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [
-                "node_forward"
-              ],
-              "execution_family": null,
-              "metadata": {
-                "original_logical_node": "verify"
-              }
-            },
-            "node_emit": {
-              "id": "node_emit",
-              "operation_type": "noop",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [
-                "node_verify"
-              ],
-              "execution_family": null,
-              "metadata": {
-                "original_logical_node": "emit"
-              }
-            }
-          },
-          "roots": [
-            "node_emit"
-          ],
-          "metadata": {
-            "lowered_from": "ExecutionIR",
-            "cache_key": "phys_ir_8f9107eb15bd11a9e3c80cbd4e48e4b74915776be6d566b9f33a8f86ce62dfa0"
-          }
-        },
-        "backend_operation_graph": {
-          "backend_id": "mlx",
-          "operations": {
-            "node_prefill": {
-              "id": "node_prefill",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [],
-              "metadata": {
-                "original_logical_node": "prefill"
-              },
-              "execution_family": null
-            },
-            "node_sample": {
-              "id": "node_sample",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [
-                "node_prefill"
-              ],
-              "metadata": {
-                "original_logical_node": "sample"
-              },
-              "execution_family": null
-            },
-            "node_forward": {
-              "id": "node_forward",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [
-                "node_sample"
-              ],
-              "metadata": {
-                "original_logical_node": "forward"
-              },
-              "execution_family": null
-            },
-            "node_verify": {
-              "id": "node_verify",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [
-                "node_forward"
-              ],
-              "metadata": {
-                "original_logical_node": "verify"
-              },
-              "execution_family": null
-            },
-            "node_emit": {
-              "id": "node_emit",
-              "inputs": [],
-              "outputs": [],
-              "dependencies": [
-                "node_verify"
-              ],
-              "metadata": {
-                "original_logical_node": "emit"
-              },
-              "execution_family": null
-            }
-          },
-          "roots": [
-            "node_emit"
-          ],
-          "barriers": [],
-          "synchronization_points": [],
-          "metadata": {
-            "translation_layer": "MLXAdapter"
-          }
-        },
-        "execution_schedule": {
-          "ordered_operations": [
-            "node_prefill",
-            "node_sample",
-            "node_forward",
-            "node_verify",
-            "node_emit"
-          ],
-          "dependency_levels": {
-            "node_prefill": 0,
-            "node_sample": 1,
-            "node_forward": 2,
-            "node_verify": 3,
-            "node_emit": 4
-          },
-          "execution_groups": [
-            {
-              "group_id": "group_0",
-              "operations": [
-                "node_prefill"
-              ],
-              "dependency_level": 0,
-              "estimated_cost": 0.0,
-              "estimated_memory": 0.0,
-              "parallelizable": false,
-              "priority": 0
-            },
-            {
-              "group_id": "group_1",
-              "operations": [
-                "node_sample"
-              ],
-              "dependency_level": 1,
-              "estimated_cost": 0.0,
-              "estimated_memory": 0.0,
-              "parallelizable": false,
-              "priority": 0
-            },
-            {
-              "group_id": "group_2",
-              "operations": [
-                "node_forward"
-              ],
-              "dependency_level": 2,
-              "estimated_cost": 0.0,
-              "estimated_memory": 0.0,
-              "parallelizable": false,
-              "priority": 0
-            },
-            {
-              "group_id": "group_3",
-              "operations": [
-                "node_verify"
-              ],
-              "dependency_level": 3,
-              "estimated_cost": 0.0,
-              "estimated_memory": 0.0,
-              "parallelizable": false,
-              "priority": 0
-            },
-            {
-              "group_id": "group_4",
-              "operations": [
-                "node_emit"
-              ],
-              "dependency_level": 4,
-              "estimated_cost": 0.0,
-              "estimated_memory": 0.0,
-              "parallelizable": false,
-              "priority": 0
-            }
-          ],
-          "critical_path": [
-            "node_prefill",
-            "node_sample",
-            "node_forward",
-            "node_verify",
-            "node_emit"
-          ],
-          "ready_queues": {
-            "0": [
-              "node_prefill"
-            ],
-            "1": [
-              "node_sample"
-            ],
-            "2": [
-              "node_forward"
-            ],
-            "3": [
-              "node_verify"
-            ],
-            "4": [
-              "node_emit"
-            ]
-          },
-          "metadata": {
-            "policy": "dependency_driven"
-          },
-          "diagnostics": {
-            "scheduling_report": {
-              "status": "success",
-              "policy": "dependency_driven"
-            },
-            "dependency_report": {
-              "roots": [
-                "node_prefill"
-              ],
-              "leaves": [
-                "node_emit"
-              ],
-              "is_cyclic": false
-            },
-            "critical_path_report": {
-              "path": [
-                "node_prefill",
-                "node_sample",
-                "node_forward",
-                "node_verify",
-                "node_emit"
-              ],
-              "length": 5
-            },
-            "execution_group_report": {
-              "groups_count": 5
-            },
-            "parallelism_report": {
-              "estimated": 1.0
-            },
-            "policy_report": {
-              "active_policy": "dependency_driven"
-            },
-            "execution_ordering_report": {
-              "operations_count": 5
-            }
-          },
-          "statistics": {
-            "graph_depth": 5,
-            "graph_width": 1,
-            "critical_path_length": 5,
-            "dependency_fan_in": 0.8,
-            "dependency_fan_out": 0.8,
-            "parallel_groups": 0,
-            "execution_levels": 5,
-            "estimated_parallelism": 1.0,
-            "schedule_generation_time_ms": 0.046253204345703125
-          }
-        },
-        "compiler_statistics": {
-          "total_compilations": 1,
-          "successful_compilations": 1,
-          "failed_compilations": 0,
-          "total_compilation_time_ms": 0.3018379211425781
-        },
-        "translation_diagnostics": [
-          "MLX validation status: PASSED",
-          "Successfully translated 5 physical operations to MLX operation graph."
-        ]
-      }
+      "passed": false,
+      "duration_ms": 0.833625002996996,
+      "notes": "Compiler returned None \u2014 check feature flags",
+      "artifacts": {}
     },
     {
       "phase": "Phase 4 \u2014 Runtime Execution",
-      "passed": true,
-      "duration_ms": 1.1235829988436308,
-      "notes": "",
-      "artifacts": {
-        "execution_status": "completed",
-        "execution_statistics": {
-          "executed_operations": 5,
-          "backend_invocations": 5,
-          "execution_duration_ms": 0.6232261657714844,
-          "graph_depth": 5,
-          "execution_groups": 5,
-          "dispatcher_calls": 5,
-          "adapter_calls": 5,
-          "compiler_execution_count": 1,
-          "legacy_fallback_count": 0
-        },
-        "model_output_keys": [
-          "status",
-          "operations",
-          "last_output"
-        ]
-      }
+      "passed": false,
+      "duration_ms": 0.3282910001871642,
+      "notes": "Compiler returned None in Phase 4",
+      "artifacts": {}
     },
     {
       "phase": "Phase 5 \u2014 Generation",
-      "passed": true,
-      "duration_ms": 516.5084999989631,
-      "notes": "20 tokens",
-      "artifacts": {
-        "generated_text": "Paris.ThecapitalofFranceisParis.ThecapitalofFranceisParis.ThecapitalofFrance",
-        "tokens_generated": 20,
-        "first_token_latency_ms": 38.042499998482526,
-        "tokens_per_sec": 38.721531204307674
-      }
+      "passed": false,
+      "duration_ms": 0.31187499916995876,
+      "notes": "Compiler pipeline failed to plan intent for mlx-community/TinyLlama-1.1B-Chat-v1.0-4bit",
+      "artifacts": {}
     },
     {
       "phase": "Phase 6 \u2014 Streaming",
       "passed": true,
-      "duration_ms": 0.4436670005816268,
+      "duration_ms": 0.48345799950766377,
       "notes": "",
       "artifacts": {
         "tokens_emitted": 5,
@@ -624,10 +231,10 @@
     {
       "phase": "Phase 7 \u2014 Observability",
       "passed": true,
-      "duration_ms": 1.998083000216866,
+      "duration_ms": 1.9211250000807922,
       "notes": "",
       "artifacts": {
-        "run_id": "run002-obs-e8d0528d-f0f5-4714-9789-970061736e50",
+        "run_id": "run002-obs-f0238819-1bf8-4004-a3d2-ada7caeca1b3",
         "status": "success",
         "trace_events": 1,
         "diagnostics": 1,
@@ -640,27 +247,22 @@
     },
     {
       "phase": "Phase 8 \u2014 API",
-      "passed": true,
-      "duration_ms": 336.97854099955293,
-      "notes": "",
-      "artifacts": {
-        "session_id": "3088baaf-6c5c-4ed9-8429-5c88309c8335",
-        "tokens_generated": 5,
-        "finish_reason": "stop",
-        "api_text_preview": "Paris.Thecapitalof"
-      }
+      "passed": false,
+      "duration_ms": 243.86862499886774,
+      "notes": "Generation failed: Compiler pipeline failed to plan intent for mlx-community/TinyLlama-1.1B-Chat-v1.0-4bit",
+      "artifacts": {}
     },
     {
       "phase": "Phase 9 \u2014 Tooling",
       "passed": true,
-      "duration_ms": 4.86316700153111,
+      "duration_ms": 5.7320000014442485,
       "notes": "inspector: cannot import name 'inspect_runtime' from 'omlx.tooling.inspector' (unknown location), snapshot: cannot import name 'SnapshotManager' from 'omlx.tooling.snapshot' (unknown location), profiling: cannot import name 'RuntimeProfiler' from 'omlx.tooling.profiling' (unknown location), benchmark: cannot import name 'BenchmarkRunner' from 'omlx.tooling.benchmark' (unknown location), validation: cannot import name 'ValidationRunner' from 'omlx.tooling.validation' (unknown location)",
       "artifacts": {
         "compiler_statistics": {
           "total_compilations": 3,
-          "successful_compilations": 3,
-          "failed_compilations": 0,
-          "total_compilation_time_ms": 0.6954669952392578
+          "successful_compilations": 0,
+          "failed_compilations": 3,
+          "total_compilation_time_ms": 1.3957023620605469
         },
         "runtime_state": "bootstrapping",
         "partial_notes": [
@@ -675,7 +277,7 @@
     {
       "phase": "Phase 10 \u2014 Plugins",
       "passed": true,
-      "duration_ms": 15.057707998494152,
+      "duration_ms": 16.870792002009694,
       "notes": "",
       "artifacts": {
         "discovered_count": 0,
@@ -705,7 +307,7 @@
     {
       "phase": "Phase 11 \u2014 Performance",
       "passed": true,
-      "duration_ms": 0.6592079989786725,
+      "duration_ms": 0.7148750009946525,
       "notes": "",
       "artifacts": {
         "model": "mlx-community/TinyLlama-1.1B-Chat-v1.0-4bit",
@@ -713,41 +315,36 @@
         "max_tokens": 20,
         "temperature": 0.0,
         "metrics_run_002": {
-          "model_load_time_ms": 2506.0697499993694,
-          "compile_latency_ms": 1.2158329991507344,
-          "inference_duration_ms": 516.5084999989631,
-          "first_token_latency_ms": 38.042499998482526,
-          "tokens_per_sec": 38.721531204307674,
-          "tokens_generated": 20,
-          "peak_memory_mb": 1203.171875
+          "model_load_time_ms": 3085.5490829999326,
+          "peak_memory_mb": 1183.09375
         },
         "comparison_vs_run_001": {
           "compile_latency_ms": {
-            "run_002": 1.2158329991507344,
+            "run_002": 0.0,
             "run_001": 0.1,
-            "delta": 1.1158329991507343,
-            "delta_pct": 1115.8329991507342
+            "delta": -0.1,
+            "delta_pct": -100.0
           },
           "first_token_latency_ms": {
-            "run_002": 38.042499998482526,
+            "run_002": 0.0,
             "run_001": 0.5,
-            "delta": 37.542499998482526,
-            "delta_pct": 7508.499999696505
+            "delta": -0.5,
+            "delta_pct": -100.0
           },
           "tokens_per_sec": {
-            "run_002": 38.721531204307674,
+            "run_002": 0.0,
             "run_001": 2000.0,
-            "delta": -1961.2784687956923,
-            "delta_pct": -98.06392343978462
+            "delta": -2000.0,
+            "delta_pct": -100.0
           },
           "peak_memory_mb": {
-            "run_002": 1203.171875,
+            "run_002": 1183.09375,
             "run_001": 150.0,
-            "delta": 1053.171875,
-            "delta_pct": 702.1145833333334
+            "delta": 1033.09375,
+            "delta_pct": 688.7291666666667
           },
           "inference_duration_ms": {
-            "run_002": 516.5084999989631,
+            "run_002": 0.0,
             "run_001": 0.0,
             "delta": null,
             "delta_pct": null
@@ -757,41 +354,36 @@
     }
   ],
   "performance": {
-    "model_load_time_ms": 2506.0697499993694,
-    "compile_latency_ms": 1.2158329991507344,
-    "inference_duration_ms": 516.5084999989631,
-    "first_token_latency_ms": 38.042499998482526,
-    "tokens_per_sec": 38.721531204307674,
-    "tokens_generated": 20,
-    "peak_memory_mb": 1203.171875
+    "model_load_time_ms": 3085.5490829999326,
+    "peak_memory_mb": 1183.09375
   },
   "run001_comparison": {
     "compile_latency_ms": {
-      "run_002": 1.2158329991507344,
+      "run_002": 0.0,
       "run_001": 0.1,
-      "delta": 1.1158329991507343,
-      "delta_pct": 1115.8329991507342
+      "delta": -0.1,
+      "delta_pct": -100.0
     },
     "first_token_latency_ms": {
-      "run_002": 38.042499998482526,
+      "run_002": 0.0,
       "run_001": 0.5,
-      "delta": 37.542499998482526,
-      "delta_pct": 7508.499999696505
+      "delta": -0.5,
+      "delta_pct": -100.0
     },
     "tokens_per_sec": {
-      "run_002": 38.721531204307674,
+      "run_002": 0.0,
       "run_001": 2000.0,
-      "delta": -1961.2784687956923,
-      "delta_pct": -98.06392343978462
+      "delta": -2000.0,
+      "delta_pct": -100.0
     },
     "peak_memory_mb": {
-      "run_002": 1203.171875,
+      "run_002": 1183.09375,
       "run_001": 150.0,
-      "delta": 1053.171875,
-      "delta_pct": 702.1145833333334
+      "delta": 1033.09375,
+      "delta_pct": 688.7291666666667
     },
     "inference_duration_ms": {
-      "run_002": 516.5084999989631,
+      "run_002": 0.0,
       "run_001": 0.0,
       "delta": null,
       "delta_pct": null
@@ -800,16 +392,16 @@
   "validation_checklist": {
     "real_production_model_executed": true,
     "no_mock_execution": true,
-    "omlx_client_used_as_entry_point": true,
+    "omlx_client_used_as_entry_point": false,
     "runtime_generate_is_sole_execution_owner": true,
     "canonical_execution_path_followed": true,
     "model_intelligence_participated": true,
     "quantization_intelligence_participated": true,
-    "compiler_generated_all_artifacts": true,
-    "scheduler_produced_execution_schedule": true,
-    "execution_engine_executed": true,
-    "backend_adapter_executed_real_mlx_ops": true,
-    "tokens_generated_successfully": true,
+    "compiler_generated_all_artifacts": false,
+    "scheduler_produced_execution_schedule": false,
+    "execution_engine_executed": false,
+    "backend_adapter_executed_real_mlx_ops": false,
+    "tokens_generated_successfully": false,
     "streaming_functions_correctly": true,
     "observation_session_recorded_complete_run": true,
     "tooling_inspected_session": true,

@@ -1,9 +1,9 @@
 {
   "compiler_statistics": {
     "total_compilations": 3,
-    "successful_compilations": 3,
-    "failed_compilations": 0,
-    "total_compilation_time_ms": 0.6954669952392578
+    "successful_compilations": 0,
+    "failed_compilations": 3,
+    "total_compilation_time_ms": 1.3957023620605469
   },
   "runtime_state": "bootstrapping",
   "partial_notes": [
