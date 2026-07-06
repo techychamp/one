@@ -16,3 +16,9 @@ class DevicePlan:
     placement: ExecutionPlacement
     affinity: ExecutionAffinity
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass(frozen=True)
+class DeviceRequirement:
+    device_type: str
+    minimum_vram: int = 0
+    metadata: Dict[str, Any] = field(default_factory=dict)
