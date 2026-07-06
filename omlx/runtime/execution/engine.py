@@ -30,10 +30,12 @@ class ExecutionEngine:
         else:
             self._executor = executor
 
-    def execute(self, context: ExecutionContext) -> ExecutionResult:
+    def execute(self, session: Any) -> ExecutionResult:
         """
-        Executes the compiled intent using the provided context.
+        Executes the compiled intent using the provided RuntimeSession.
         """
+        context = session.execution_context
+
         logger.debug("ExecutionEngine starting execution")
 
         if not context.backend_operation_graph:
@@ -46,9 +48,9 @@ class ExecutionEngine:
         with get_observer().observe_phase("Execution", "Engine", "execute"):
             try:
                 # The execution engine purely consumes the context.
-                # If cache is required, it accesses context.cache_session without managing its lifecycle.
-                if getattr(context, "cache_session", None):
-                    logger.debug(f"ExecutionEngine utilizing cache session for plan: {context.cache_session.cache_plan.plan_id}")
+                # If cache is required, it accesses session.cache_session without managing its lifecycle.
+                if getattr(session, "cache_session", None):
+                    logger.debug(f"ExecutionEngine utilizing cache session for plan: {session.cache_session.cache_plan.plan_id}")
 
                 result = self._executor.execute(context.backend_operation_graph, context)
                 get_observer().track_artifact("ExecutionResult", result)
