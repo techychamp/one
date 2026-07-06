@@ -3,7 +3,7 @@
 Quantization Compatibility Framework.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from .descriptor import QuantizationDescriptor
 from .types import HardwareRecommendation
 from omlx.framework.model_intelligence.descriptor import ModelDescriptor
@@ -13,23 +13,35 @@ class QuantizationCompatibilityFramework:
     Evaluates compatibility without modifying backend selection.
     """
 
+    _model_compat_cache: Dict[Tuple[int, int], bool] = {}
+    _backend_compat_cache: Dict[Tuple[int, str], bool] = {}
+
     def evaluate_model_compatibility(self, quant_desc: QuantizationDescriptor, model_desc: ModelDescriptor) -> bool:
+        cache_key = (id(quant_desc), id(model_desc))
+        if cache_key in self._model_compat_cache:
+            return self._model_compat_cache[cache_key]
+
         if not quant_desc.supported_model_families:
-             return True # If empty, assume compatible
-        return model_desc.model_family in quant_desc.supported_model_families
+             result = True # If empty, assume compatible
+        else:
+             result = model_desc.model_family in quant_desc.supported_model_families
+
+        self._model_compat_cache[cache_key] = result
+        return result
 
     def evaluate_backend_compatibility(self, quant_desc: QuantizationDescriptor, backend_desc: Any) -> bool:
-        # Assuming backend_desc has a 'name' or 'id'
         backend_id = getattr(backend_desc, 'backend_id', getattr(backend_desc, 'name', 'unknown'))
-
-        # Check against recommended_backend as well as supported
-        if quant_desc.recommended_backend and quant_desc.recommended_backend.lower() == str(backend_id).lower():
-            return True
+        cache_key = (id(quant_desc), backend_id)
+        if cache_key in self._backend_compat_cache:
+            return self._backend_compat_cache[cache_key]
 
         if not quant_desc.supported_backends:
-            return True
+            result = True
+        else:
+            result = backend_id in quant_desc.supported_backends
 
-        return backend_id in quant_desc.supported_backends
+        self._backend_compat_cache[cache_key] = result
+        return result
 
     def estimate_hardware_suitability(self, quant_desc: QuantizationDescriptor) -> List[str]:
         suitability = list(quant_desc.recommended_hardware)
