@@ -4,23 +4,27 @@ import asyncio
 from omlx.api.v1.exceptions import ConfigurationError
 
 class GenerateRequest(BaseModel):
+    model_config = ConfigDict(frozen=True)
     model_id: str
     prompt: str
     max_tokens: int = 100
     temperature: float = 0.7
 
 class GenerateResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
     text: str
     finish_reason: str
     tokens_generated: int
 
 class StreamRequest(BaseModel):
+    model_config = ConfigDict(frozen=True)
     model_id: str
     prompt: str
     max_tokens: int = 100
     temperature: float = 0.7
 
 class StreamResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
     text_chunk: str
     is_finished: bool
 

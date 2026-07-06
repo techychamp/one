@@ -43,6 +43,9 @@ class SpeculativeGenerationStrategy(GenerationStrategy):
     Speculative generation strategy using compiler-native speculative decoding.
     """
 
+        @property
+    def strategy_intent(self) -> str:
+        return "verification_memory_required"
     def get_cache_policy(self) -> dict:
         return {"use_cache": True, "policy": "speculative"}
 
