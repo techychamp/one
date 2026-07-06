@@ -4,7 +4,7 @@ from types import MappingProxyType
 
 from omlx.capabilities.descriptor import CapabilityDescriptor
 from omlx.planner.device.artifacts import (
-    DevicePlan, ExecutionPlacement, ExecutionAffinity, DeviceRequirement
+    DevicePlan, ExecutionPlacement, ExecutionAffinity,
 )
 from omlx.planner.compiler.cache.utils import compute_cache_key
 
@@ -44,7 +44,7 @@ class DevicePlanner:
         hw_reqs = tuple(getattr(descriptor, 'hardware_requirements', []))
 
         if is_apple_silicon:
-            reqs = DeviceRequirement(
+            reqs = dict(
                 required_device_type="apple_silicon",
                 minimum_memory=min_memory,
                 required_capabilities=hw_reqs
@@ -52,7 +52,7 @@ class DevicePlanner:
             placement = ExecutionPlacement(device_id="default_apple_silicon", strategy="unified_memory")
             affinity = ExecutionAffinity(affinity_group="apple_silicon_group", priority=100)
         else:
-            reqs = DeviceRequirement(
+            reqs = dict(
                 required_device_type="generic_gpu",
                 minimum_memory=min_memory,
                 required_capabilities=hw_reqs
@@ -68,7 +68,7 @@ class DevicePlanner:
         plan = DevicePlan(
             placement=placement,
             affinity=affinity,
-            requirements=reqs,
+
             planner_metadata=metadata
         )
 
