@@ -20,6 +20,7 @@ from .backend.registry import AdapterRegistry
 from omlx.runtime.observability import get_observer
 from omlx.planner.domains.bundle import PlanningBundle
 from omlx.planner.compiler.transformation.pass_ import FusionRealizationPass
+from omlx.optimization.fusion import FusionEvaluator
 
 logger = logging.getLogger("omlx.compiler")
 
@@ -44,11 +45,14 @@ class CompilerEngine:
 
             # Conditionally inject fusion realization pass if plan is provided
             if planning_bundle and planning_bundle.fusion_plan:
-                 # It's better to dynamically inject rather than mutating a shared registry
-                 # But for simplicity in the engine structure, we can temporarily add and apply
-                 fusion_pass = FusionRealizationPass(planning_bundle.fusion_plan)
-                 logical_ir = fusion_pass.apply(logical_ir)
-                 get_observer().track_artifact("FusionTransformationReport", fusion_pass.report)
+                 evaluator = FusionEvaluator()
+                 decision = evaluator.evaluate_plan(planning_bundle.fusion_plan, None, None)
+                 get_observer().track_artifact("FusionOptimizationDecision", decision)
+
+                 if decision.accepted:
+                     fusion_pass = FusionRealizationPass(planning_bundle.fusion_plan)
+                     logical_ir = fusion_pass.apply(logical_ir)
+                     get_observer().track_artifact("FusionTransformationReport", fusion_pass.descriptor)
 
             # 1. Logical Optimization
             logger.debug("Applying logical passes")
