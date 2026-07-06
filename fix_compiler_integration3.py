@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+with open("omlx/runtime/compiler_integration.py", "w") as f:
+    f.write('''# SPDX-License-Identifier: Apache-2.0
 """
 Orchestrates the OMLX Compiler Pipeline within the runtime.
 Does not own its dependencies; dependencies are injected via the Runtime instance.
@@ -152,4 +153,4 @@ class CompilerPipelineRunner:
                 backend_operation_graph=backend_op_graph
             )
 
-        return translation_result
+        return translation_result''')
