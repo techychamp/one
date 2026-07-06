@@ -75,6 +75,8 @@ class Runtime:
     def __init__(self, context: RuntimeContext) -> None:
         self.context = context
         self.state = RuntimeStateEnum.CREATED
+        import threading
+        self._generate_lock = threading.Lock()
 
         # Subsystems
         self.settings: Any = context.settings
@@ -150,7 +152,7 @@ class Runtime:
         )
         return self.execution_engine.execute(exec_context)
 
-    def _sample_token(self, execution_result: Any, temperature: float, mx: Any) -> tuple[int, str]:
+    def _sample_token(self, execution_result: Any, sampler: Any, mx: Any) -> tuple[int, str]:
         model_output = execution_result.model_output
         if not model_output or not model_output.get("last_output"):
             raise ValueError("No output from adapter")
@@ -169,24 +171,34 @@ class Runtime:
 
         if mx is None:
             return 0, " simulated"
-        elif temperature == 0.0:
-            return mx.argmax(logits[:, -1, :], axis=-1).item(), None
+
+        if callable(sampler):
+            # Pluggable sampler
+            return sampler(logits).item(), None
         else:
-            scaled_logits = logits[:, -1, :] / temperature
-            return mx.random.categorical(scaled_logits).item(), None
+            # Fallback backward compatibility
+            if sampler == 0.0:
+                return mx.argmax(logits[:, -1, :], axis=-1).item(), None
+            else:
+                scaled_logits = logits[:, -1, :] / sampler
+                return mx.random.categorical(scaled_logits).item(), None
 
     def generate(
-        self,
+            self,
         request_context: Any,
         max_tokens: int = 10,
-        temperature: float = 0.0,
+        sampler: Any = 0.0,
+        stop_sequences: list[str] = None,
+        timeout: float = None,
     ) -> Any:
         import time
         import uuid
-        try:
-            import mlx.core as mx
-        except ImportError:
-            mx = None
+        # intentional limitation: a single runtime-wide lock prevents continuous batching and concurrent sessions on a single instance
+        with self._generate_lock:
+            try:
+                import mlx.core as mx
+            except ImportError:
+                mx = None
 
         from omlx.runtime.streaming.types import StreamingToken, StreamCompletion
         from omlx.runtime.streaming.events import StreamingEvent, StreamingEventType
@@ -220,7 +232,7 @@ class Runtime:
                         if execution_result.status.value == "failed":
                             raise RuntimeError("Execution failed")
 
-                        next_token, token_text = self._sample_token(execution_result, temperature, mx)
+                        next_token, token_text = self._sample_token(execution_result, sampler, mx)
 
                         if token_text is None:
                             token_text = tokenizer.decode([next_token])
@@ -253,6 +265,9 @@ class Runtime:
                     self.streaming_controller.complete_session(session.session_id, StreamCompletion.ERROR, e)
                     get_observer().add_diagnostic(f"Execution Error: {str(e)}")
                     # don't re-raise as we need to return the session
+                    import logging
+                    logger = logging.getLogger("omlx.runtime")
+                    logger.error(f"ExecutionError in generation loop: {e}")
 
             end_time = time.time()
             observation_session = session_observer.build_session(
