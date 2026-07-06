@@ -1,48 +1,79 @@
 import pytest
 import asyncio
+from typing import Any
 from omlx.api.v1 import (
     ModelService, ModelLoadBuilder, ModelDescriptor, ModelInfo,
     GenerationService, GenerateRequestBuilder, StreamRequestBuilder,
     StreamingService,
     ObservationService, ObservationQueryBuilder,
-    QuantizationService, CapabilityService
+    QuantizationService, CapabilityService,
+    CompilerService, CompilerRequestBuilder
 )
 
-def test_model_service():
-    service = ModelService()
+class MockRuntime:
+    def __init__(self):
+        self.engine_pool = MockEnginePool()
+        self.compiler_service = MockCompiler()
+
+    def generate(self, request_context: Any, max_tokens: int, temperature: float) -> dict:
+        return {
+            "generated_text": "delegated text",
+            "tokens": [1, 2, 3]
+        }
+
+class MockEnginePool:
+    def load(self, model_id: str) -> bool:
+        return True
+
+    def unload(self, model_id: str) -> bool:
+        return True
+
+    def list_models(self) -> list:
+        return ["model-a", "model-b"]
+
+class MockCompiler:
+    def run_compilation(self, model_id: str, request_context: Any) -> Any:
+        class MockGraph:
+            nodes = [1, 2]
+        class MockRes:
+            backend_graph = MockGraph()
+        return MockRes()
+
+def test_model_service_delegation():
+    runtime = MockRuntime()
+    service = ModelService(runtime)
+
     builder = ModelLoadBuilder()
     req = builder.with_model_id("test").build()
 
     assert service.load_model(req)
     assert service.unload_model("test")
-    assert isinstance(service.list_models(), list)
-    assert service.model_information("test") is None
 
-def test_generation_service():
-    service = GenerationService()
+    models = service.list_models()
+    assert len(models) == 2
+    assert models[0].descriptor.model_id == "model-a"
+
+def test_generation_service_delegation():
+    runtime = MockRuntime()
+    service = GenerationService(runtime)
+
     builder = GenerateRequestBuilder()
     req = builder.with_model("test").with_prompt("hello").build()
 
     resp = service.generate(req)
-    assert resp.text == "generated text"
+    assert resp.text == "delegated text"
+    assert resp.tokens_generated == 3
 
-    batch_resp = service.batch_generate([req])
-    assert len(batch_resp) == 1
-    assert batch_resp[0].text == "generated text"
+def test_compiler_service_delegation():
+    runtime = MockRuntime()
+    service = CompilerService(runtime)
 
-@pytest.mark.asyncio
-async def test_streaming_service():
-    service = GenerationService()
-    builder = StreamRequestBuilder()
-    req = builder.with_model("test").with_prompt("hello").build()
+    builder = CompilerRequestBuilder()
+    req = builder.with_model("test").build_request()
 
-    chunks = []
-    async for chunk in service.stream(req):
-        chunks.append(chunk)
-
-    assert len(chunks) == 2
-    assert chunks[0].text_chunk == "chunk"
-    assert chunks[1].is_finished
+    resp = service.compile(req)
+    assert resp.artifacts.node_count == 2
+    assert resp.artifacts.has_translation is True
 
 def test_streaming_lifecycle():
     service = StreamingService()

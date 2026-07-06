@@ -1,9 +1,6 @@
 from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 import asyncio
-from omlx.planner.compiler.engine import CompilerEngine
-from omlx.planner.ir.graph import ExecutionIR
-from omlx.planner.compiler.backend.registry import AdapterRegistry
 from omlx.api.v1.exceptions import CompilerError
 import logging
 
@@ -25,10 +22,21 @@ class CompilerRequest(BaseModel, frozen=True):
     target_backend: str = "mlx"
     optimizations: Dict[str, bool] = Field(default_factory=dict)
 
+class RequestContextShim:
+    def __init__(self, model_id: str):
+        self.model = model_id
+
 class CompilerService:
-    def __init__(self):
-        self._engine = CompilerEngine()
-        self._adapter_registry = AdapterRegistry()
+    def __init__(self, internal_runtime: Any = None):
+        self._runtime = internal_runtime
+        if self._runtime and hasattr(self._runtime, "compiler_service"):
+             self._internal_compiler = self._runtime.compiler_service
+        else:
+             from omlx.planner.compiler.engine import CompilerEngine
+             from omlx.planner.compiler.backend.registry import AdapterRegistry
+             self._engine = CompilerEngine()
+             self._adapter_registry = AdapterRegistry()
+             self._internal_compiler = None
 
     async def compile_async(self, request: CompilerRequest) -> CompilerResult:
         return await asyncio.to_thread(self.compile, request)
@@ -36,6 +44,31 @@ class CompilerService:
     def compile(self, request: CompilerRequest) -> CompilerResult:
         try:
             logger.info(f"Compiling model: {request.model_id}")
+
+            # Delegate to runtime compiler service if available
+            if self._internal_compiler:
+                ctx = RequestContextShim(request.model_id)
+                res = self._internal_compiler.run_compilation(request.model_id, ctx)
+
+                node_count = 0
+                has_translation = False
+                if res:
+                    has_translation = True
+                    backend_graph = getattr(res, "backend_graph", getattr(res, "backend_operation_graph", None))
+                    if backend_graph and hasattr(backend_graph, "nodes"):
+                        node_count = len(backend_graph.nodes)
+
+                return CompilerResult(
+                    success=True,
+                    artifacts=CompilerArtifactSummary(
+                        node_count=node_count,
+                        target_backend=request.target_backend,
+                        has_translation=has_translation
+                    )
+                )
+
+            # Fallback path if instantiated outside runtime
+            from omlx.planner.ir.graph import ExecutionIR
             ir = ExecutionIR(nodes={}, roots=[])
             physical_ir = self._engine.compile(ir)
 

@@ -4,6 +4,10 @@ import asyncio
 from omlx.runtime.builder import RuntimeBuilder as InternalRuntimeBuilder
 from omlx.runtime.feature_flags import FeatureFlags
 
+from omlx.api.v1.generation import GenerationService
+from omlx.api.v1.model import ModelService
+from omlx.api.v1.compiler import CompilerService
+
 class RuntimeConfig(BaseModel, frozen=True):
     settings: Dict[str, Any] = Field(default_factory=dict)
     feature_flags: Dict[str, bool] = Field(default_factory=dict)
@@ -11,12 +15,22 @@ class RuntimeConfig(BaseModel, frozen=True):
 class RuntimeService:
     def __init__(self, internal_runtime):
         self._internal = internal_runtime
+        self._generation = GenerationService(self._internal)
+        self._model = ModelService(self._internal)
 
     @property
     def status(self) -> str:
         if hasattr(self._internal, 'state') and hasattr(self._internal.state, 'value'):
             return self._internal.state.value
         return "unknown"
+
+    @property
+    def generation(self) -> GenerationService:
+        return self._generation
+
+    @property
+    def models(self) -> ModelService:
+        return self._model
 
 class RuntimeBuilder:
     def __init__(self):

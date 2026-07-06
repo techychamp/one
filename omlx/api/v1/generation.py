@@ -1,5 +1,5 @@
-from typing import List, Optional, AsyncGenerator
-from pydantic import BaseModel, Field
+from typing import List, Optional, AsyncGenerator, Any
+from pydantic import BaseModel, Field, ConfigDict
 import asyncio
 
 class GenerateRequest(BaseModel, frozen=True):
@@ -17,6 +17,7 @@ class StreamRequest(BaseModel, frozen=True):
     model_id: str
     prompt: str
     max_tokens: int = 100
+    temperature: float = 0.7
 
 class StreamResponse(BaseModel, frozen=True):
     text_chunk: str
@@ -55,13 +56,35 @@ class StreamRequestBuilder:
     def build(self) -> StreamRequest:
         return StreamRequest(model_id=self._model_id, prompt=self._prompt)
 
+class RequestContext:
+    def __init__(self, model: str, prompt: str):
+        self.model = model
+        self.prompt = prompt
+
 class GenerationService:
+    def __init__(self, internal_runtime: Any):
+        self._runtime = internal_runtime
+
     def generate(self, request: GenerateRequest) -> GenerateResponse:
-        return GenerateResponse(text="generated text", finish_reason="stop", tokens_generated=10)
+        ctx = RequestContext(model=request.model_id, prompt=request.prompt)
+        res = self._runtime.generate(
+            request_context=ctx,
+            max_tokens=request.max_tokens,
+            temperature=request.temperature
+        )
+        return GenerateResponse(
+            text=res.get("generated_text", ""),
+            finish_reason="stop",
+            tokens_generated=len(res.get("tokens", []))
+        )
 
     async def stream(self, request: StreamRequest) -> AsyncGenerator[StreamResponse, None]:
-        yield StreamResponse(text_chunk="chunk", is_finished=False)
-        yield StreamResponse(text_chunk="", is_finished=True)
+        ctx = RequestContext(model=request.model_id, prompt=request.prompt)
+        # Note: In a fully implemented async streaming environment we would listen to events
+        # but the current generate() method blocks and runs synchronously.
+        # This is a shim simulating async delivery for API contracts using run_in_executor
+        res = await asyncio.to_thread(self._runtime.generate, ctx, request.max_tokens, request.temperature)
+        yield StreamResponse(text_chunk=res.get("generated_text", ""), is_finished=True)
 
     def batch_generate(self, requests: List[GenerateRequest]) -> List[GenerateResponse]:
         return [self.generate(r) for r in requests]
