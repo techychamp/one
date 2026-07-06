@@ -7,6 +7,21 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 @dataclass(frozen=True)
+class DeviceContext:
+    """Immutable device configuration and constraints."""
+    device_id: Optional[str] = None
+    memory_limit: Optional[int] = None
+    compute_capability: Optional[str] = None
+
+@dataclass(frozen=True)
+class MemoryContext:
+    """Immutable memory allocation plan and bounds."""
+    total_allocated: int = 0
+    pinned_memory: int = 0
+    memory_strategy: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class ExecutionContext:
     """Immutable snapshot of the execution context."""
     request_context: Any = None

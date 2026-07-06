@@ -285,7 +285,12 @@ class Runtime:
                     cache_session=cache_session
                 )
 
-                execution_result = self.execution_engine.execute(exec_context)
+                from omlx.runtime.session import RuntimeSession
+                runtime_session = RuntimeSession.create()
+                runtime_session.execution_context = exec_context
+                runtime_session.cache_session = cache_session
+
+                execution_result = self.execution_engine.execute(runtime_session)
 
                 if cache_session:
                     cache_session.deactivate()
@@ -326,7 +331,12 @@ class Runtime:
                     cache_session=cache_session
                 )
 
-                execution_result = self.execution_engine.execute(exec_context)
+                from omlx.runtime.session import RuntimeSession
+                runtime_session = RuntimeSession.create()
+                runtime_session.execution_context = exec_context
+                runtime_session.cache_session = cache_session
+
+                execution_result = self.execution_engine.execute(runtime_session)
 
                 if cache_session:
                     cache_session.deactivate()
