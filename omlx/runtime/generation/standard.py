@@ -18,6 +18,9 @@ class StandardGenerationStrategy(GenerationStrategy):
     Standard generation strategy that preserves existing Runtime behavior.
     """
 
+    def get_cache_policy(self) -> dict:
+        return {"use_cache": True, "policy": "standard"}
+
     def generate(self, runtime: Any, request_context: Any, **kwargs) -> Any:
         max_tokens = kwargs.get("max_tokens", 10)
         sampler = kwargs.get("sampler", 0.0)
