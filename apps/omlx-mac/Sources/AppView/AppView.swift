@@ -13,6 +13,10 @@ import SwiftUI
 struct AppView: View {
     @State private var selection: AppSection? = .status
     @State private var presentedUpdate: AvailableUpdate?
+    @State private var isSearchPresented = false
+    @State private var searchViewModel = GlobalSearchViewModel()
+    @Environment(\.keyboardShortcutManager) private var shortcuts
+    @State private var windowState = WindowStateManager()
 
     @Environment(\.colorScheme) private var scheme
     @Environment(AppServices.self) private var services
@@ -95,6 +99,9 @@ struct AppView: View {
     @ViewBuilder
     private func screen(for section: AppSection) -> some View {
         switch section {
+        case .chat:         Text("Chat Workspace Placeholder")
+        case .compiler:     Text("Compiler Explorer Placeholder")
+        case .developer:    Text("Developer Studio Placeholder")
         case .server:       ServerScreen()
         case .network:      NetworkScreen()
         case .performance:  PerformanceScreen()
@@ -438,6 +445,15 @@ private struct SettingsSidebar: View {
     var body: some View {
         List(selection: $selection) {
             Section {
+                SidebarRow(section: .chat)
+                SidebarRow(section: .compiler)
+                SidebarRow(section: .developer)
+            } header: {
+                Text(String(localized: "sidebar.group.workspace",
+                            defaultValue: "Workspaces",
+                            comment: "Sidebar group heading for workspaces"))
+            }
+            Section {
                 SidebarRow(section: .status)
                 SidebarRow(section: .server)
                 SidebarRow(section: .network)
@@ -487,6 +503,8 @@ private struct SidebarRow: View {
         NavigationLink(value: section) {
             Label(section.title, systemImage: section.symbol)
         }
+        .accessibilityLabel(section.title)
+        .accessibilityAddTraits(.isButton)
     }
 }
 
