@@ -4,7 +4,8 @@ Execution Context for OMLX Execution Engine.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
+from omlx.runtime.execution.artifacts import ExecutionGraph
 
 @dataclass(frozen=True)
 class DeviceContext:
@@ -31,6 +32,7 @@ class ExecutionContext:
     physical_ir: Optional[Any] = None
     backend_operation_graph: Optional[Any] = None
     diffusion_execution_graph: Optional[Any] = None
+    execution_graphs: Optional[Tuple[ExecutionGraph, ...]] = None
     compiler_session: Optional[Any] = None
     capability_descriptor: Optional[Any] = None
     model_descriptor: Optional[Any] = None
@@ -42,6 +44,10 @@ class ExecutionContext:
     adapter: Optional[Any] = None
     cache_plan: Optional[Any] = None
     cache_session: Optional[Any] = None
+
+    # MOE Execution Context
+    expert_execution_graph: Optional[Any] = None
+    routing_reports: Optional[Any] = None
     # Loaded model and tokenizer — injected by the execution harness for RUN-001.
     # The backend adapter does not read these in RUN-001; they are reserved for
     # BACKEND-005 where MLXAdapter.execute() will invoke real MLX kernel dispatch.
