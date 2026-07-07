@@ -49,7 +49,7 @@ class GraphScheduler(IGraphScheduler):
         # Multi-plan dependency execution support
         ordered_operations: List[str] = []
         execution_groups: List[ExecutionGroup] = []
-        ready_queues: Dict[int, List[str]] = {}
+        ready_queues: Dict[int, Tuple[str, ...]] = {}
 
         # Build a unified operations dict mapped to phases
         op_phase_map = {}
@@ -62,10 +62,10 @@ class GraphScheduler(IGraphScheduler):
              ops = list(phase.operations)
              ops.sort() # Ensure deterministic ordering
              ordered_operations.extend(ops)
-             ready_queues[phase_idx] = ops
+             ready_queues[phase_idx] = tuple(ops)
              execution_groups.append(ExecutionGroup(
                  group_id=f"phase_{phase_idx}_{phase.name}",
-                 operations=ops,
+                 operations=tuple(ops),
                  dependency_level=phase_idx,
                  parallelizable=len(ops) > 1
              ))
@@ -75,10 +75,10 @@ class GraphScheduler(IGraphScheduler):
              ops = list(graph.operations.keys())
              ops.sort()
              ordered_operations.extend(ops)
-             ready_queues[0] = ops
+             ready_queues[0] = tuple(ops)
              execution_groups.append(ExecutionGroup(
                  group_id="group_0",
-                 operations=ops,
+                 operations=tuple(ops),
                  dependency_level=0,
                  parallelizable=True
              ))
@@ -111,10 +111,10 @@ class GraphScheduler(IGraphScheduler):
         )
 
         return ExecutionSchedule(
-            ordered_operations=ordered_operations,
+            ordered_operations=tuple(ordered_operations),
             dependency_levels={op: phase_idx for op, phase_idx in op_phase_map.items()},
-            execution_groups=execution_groups,
-            critical_path=[],
+            execution_groups=tuple(execution_groups),
+            critical_path=tuple(),
             ready_queues=ready_queues,
             metadata={"policy": self.policy.value},
             diagnostics=diagnostics,
@@ -127,7 +127,7 @@ class GraphScheduler(IGraphScheduler):
 
         # 2. Build execution order based on policy
         ordered_operations: List[str] = []
-        ready_queues: Dict[int, List[str]] = {}
+        ready_queues: Dict[int, Tuple[str, ...]] = {}
         execution_groups: List[ExecutionGroup] = []
 
         if self.policy == SchedulingPolicy.SEQUENTIAL:
@@ -154,7 +154,7 @@ class GraphScheduler(IGraphScheduler):
             if ordered_operations:
                  execution_groups.append(ExecutionGroup(
                      group_id="group_0",
-                     operations=list(ordered_operations),
+                     operations=tuple(ordered_operations),
                      dependency_level=0
                  ))
 
@@ -171,11 +171,11 @@ class GraphScheduler(IGraphScheduler):
 
             for level in sorted(level_groups.keys()):
                 ops = sorted(level_groups[level]) # deterministic
-                ready_queues[level] = ops
+                ready_queues[level] = tuple(ops)
                 ordered_operations.extend(ops)
                 execution_groups.append(ExecutionGroup(
                      group_id=f"group_{level}",
-                     operations=ops,
+                     operations=tuple(ops),
                      dependency_level=level,
                      parallelizable=len(ops) > 1
                 ))
@@ -210,10 +210,10 @@ class GraphScheduler(IGraphScheduler):
         )
 
         return ExecutionSchedule(
-            ordered_operations=ordered_operations,
+            ordered_operations=tuple(ordered_operations),
             dependency_levels=dep_result.levels,
-            execution_groups=execution_groups,
-            critical_path=cp_result.path,
+            execution_groups=tuple(execution_groups),
+            critical_path=tuple(cp_result.path),
             ready_queues=ready_queues,
             metadata={"policy": self.policy.value},
             diagnostics=diagnostics,
@@ -223,7 +223,7 @@ class GraphScheduler(IGraphScheduler):
     def _build_from_execution_phase_graph(self, graph: ExecutionPhaseGraph, start_time: float) -> ExecutionSchedule:
         ordered_operations: List[str] = []
         execution_groups: List[ExecutionGroup] = []
-        ready_queues: Dict[int, List[str]] = {}
+        ready_queues: Dict[int, Tuple[str, ...]] = {}
 
         op_phase_map = {}
         for phase_idx, phase in enumerate(graph.phases):
@@ -234,10 +234,10 @@ class GraphScheduler(IGraphScheduler):
              ops = list(phase.operations)
              ops.sort() # Ensure deterministic ordering
              ordered_operations.extend(ops)
-             ready_queues[phase_idx] = ops
+             ready_queues[phase_idx] = tuple(ops)
              execution_groups.append(ExecutionGroup(
                  group_id=f"phase_{phase_idx}_{phase.name}",
-                 operations=ops,
+                 operations=tuple(ops),
                  dependency_level=phase_idx,
                  parallelizable=len(ops) > 1
              ))
@@ -270,10 +270,10 @@ class GraphScheduler(IGraphScheduler):
         )
 
         return ExecutionSchedule(
-            ordered_operations=ordered_operations,
+            ordered_operations=tuple(ordered_operations),
             dependency_levels={op: phase_idx for op, phase_idx in op_phase_map.items()},
-            execution_groups=execution_groups,
-            critical_path=[],
+            execution_groups=tuple(execution_groups),
+            critical_path=tuple(),
             ready_queues=ready_queues,
             metadata={"policy": self.policy.value},
             diagnostics=diagnostics,
