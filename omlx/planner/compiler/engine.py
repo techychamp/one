@@ -27,6 +27,7 @@ from omlx.planner.compiler.batch.transformation.pass_ import BatchRealizationPas
 from omlx.planner.domains.cache.transformation.pass_ import CacheRealizationPass
 
 
+
 logger = logging.getLogger("omlx.compiler")
 
 class CompilerEngine:
@@ -85,6 +86,15 @@ class CompilerEngine:
                  logical_ir = diffusion_pass.apply(logical_ir)
                  if diffusion_pass.report:
                      get_observer().track_artifact("DiffusionTransformationReport", diffusion_pass.report)
+
+            # Conditionally inject Speculation realization pass if plan is provided
+            if planning_bundle and getattr(planning_bundle, 'speculation_plan', None):
+                 from omlx.planner.domains.speculation.transformation.pass_ import SpeculationRealizationPass
+                 spec_pass = SpeculationRealizationPass(planning_bundle.speculation_plan)
+                 logical_ir = spec_pass.apply(logical_ir)
+                 if spec_pass.report:
+                     planning_bundle.speculative_graph = spec_pass.report.speculative_graph
+                     get_observer().track_artifact("SpeculativeRealizationReport", spec_pass.report)
             # Conditionally inject Batch realization pass if plan is provided
             if planning_bundle and getattr(planning_bundle, 'batch_plan', None):
                  batch_pass = BatchRealizationPass(planning_bundle.batch_plan)
