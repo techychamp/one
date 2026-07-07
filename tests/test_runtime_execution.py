@@ -25,8 +25,9 @@ def test_execution_engine_initialization():
 
 def test_execution_engine_missing_graph():
     engine = ExecutionEngine()
+    from omlx.runtime.session import RuntimeSession
     context = ExecutionContext(request_context=Mock())
-    session = MagicMock()
+    session = RuntimeSession.create()
     session.execution_context = context
     result = engine.execute(session)
     assert result.status == ExecutionStatus.FAILED
@@ -41,7 +42,10 @@ def test_execution_engine_valid_graph():
     mock_adapter = MagicMock()
     mock_adapter.execute.return_value = "node_output"
 
+    from omlx.runtime.session import RuntimeSession
     context = ExecutionContext(request_context=Mock(), backend_operation_graph=graph, adapter=mock_adapter)
+    session = RuntimeSession.create()
+    session.execution_context = context
 
     session = MagicMock()
     session.execution_context = context
