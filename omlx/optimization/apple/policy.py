@@ -1,5 +1,26 @@
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
+from enum import Enum
+
+class ExecutionAffinityPreference(Enum):
+    CPU = "cpu"
+    GPU = "gpu"
+    METAL = "metal"
+    MLX = "mlx"
+    AUTO = "auto"
+
+@dataclass(frozen=True)
+class UnifiedMemoryPolicy:
+    preferred_execution_device: str
+    preferred_memory_residency: str
+    allocation_priority: int = 0
+    memory_reuse_hints: bool = True
+    synchronization_hints: str = "default"
+
+@dataclass(frozen=True)
+class PlacementStrategy:
+    strategy_type: str
+    memory_policy: UnifiedMemoryPolicy
 
 @dataclass(frozen=True)
 class PlacementOptimization:

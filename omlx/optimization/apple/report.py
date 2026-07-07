@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
-from .policy import PlacementOptimization, AffinityOptimization
+from .policy import PlacementOptimization, AffinityOptimization, PlacementStrategy, UnifiedMemoryPolicy, ExecutionAffinityPreference
 
 @dataclass(frozen=True)
 class OptimizationDiagnostics:
@@ -20,5 +20,8 @@ class AppleOptimizationReport:
     is_optimized: bool
     placements: List[PlacementOptimization] = field(default_factory=list)
     affinities: List[AffinityOptimization] = field(default_factory=list)
+    placement_strategy: Optional[PlacementStrategy] = None
+    memory_policy: Optional[UnifiedMemoryPolicy] = None
+    affinity_preference: Optional[ExecutionAffinityPreference] = None
     diagnostics: OptimizationDiagnostics = field(default_factory=OptimizationDiagnostics)
     statistics: OptimizationStatistics = field(default_factory=OptimizationStatistics)

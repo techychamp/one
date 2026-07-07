@@ -123,6 +123,9 @@ class RuntimeSession:
     batch_execution_graph: Optional[Any] = None
     batch_realization_report: Optional[Any] = None
     
+    # Apple Execution attachments
+    apple_runtime_diagnostics: Optional[Any] = None
+
     def transition(self, new_state: SessionState) -> None:
         # We can add strict transition rules later, but for now we enforce thread safety
         # and immutability conceptually by just setting the enum state.
