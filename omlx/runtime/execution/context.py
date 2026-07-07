@@ -30,6 +30,7 @@ class ExecutionContext:
     logical_ir: Optional[Any] = None
     physical_ir: Optional[Any] = None
     backend_operation_graph: Optional[Any] = None
+    diffusion_execution_graph: Optional[Any] = None
     compiler_session: Optional[Any] = None
     capability_descriptor: Optional[Any] = None
     model_descriptor: Optional[Any] = None

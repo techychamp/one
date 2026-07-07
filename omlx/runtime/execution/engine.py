@@ -53,6 +53,16 @@ class ExecutionEngine:
                     logger.debug(f"ExecutionEngine utilizing cache session for plan: {session.cache_session.cache_plan.plan_id}")
 
                 result = self._executor.execute(context.backend_operation_graph, context)
+
+                # Diffusion Execution integration
+                if context.diffusion_execution_graph is not None:
+                    from .diagnostics import DiffusionExecutionReport
+                    report = DiffusionExecutionReport(
+                        execution_latency_ms=result.execution_duration_ms,
+                        total_timesteps_executed=len(context.diffusion_execution_graph.timesteps)
+                    )
+                    get_observer().artifact_tracker.track("DiffusionExecutionReport", report)
+
                 get_observer().track_artifact("ExecutionResult", result)
                 return result
             except Exception as e:
