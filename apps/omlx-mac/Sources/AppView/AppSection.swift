@@ -9,7 +9,7 @@
 import SwiftUI
 
 enum AppSection: String, Hashable, CaseIterable, Identifiable, Sendable {
-    case server, status, network, performance, logs
+    case chat, compiler, developer, server, status, network, performance, logs
     case models, downloads, integrations, quantization
     case throughputBench, accuracyBench
     case security, about
@@ -22,6 +22,18 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable, Sendable {
             return String(localized: "sidebar.server",
                           defaultValue: "Server",
                           comment: "Sidebar row label / navigation title for the Server section")
+        case .chat:
+            return String(localized: "sidebar.chat",
+                          defaultValue: "Chat Workspace",
+                          comment: "Sidebar row label / navigation title for the Chat section")
+        case .compiler:
+            return String(localized: "sidebar.compiler",
+                          defaultValue: "Compiler Explorer",
+                          comment: "Sidebar row label / navigation title for the Compiler section")
+        case .developer:
+            return String(localized: "sidebar.developer",
+                          defaultValue: "Developer Studio",
+                          comment: "Sidebar row label / navigation title for the Developer section")
         case .network:
             return String(localized: "sidebar.network",
                           defaultValue: "Network",
@@ -76,6 +88,9 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable, Sendable {
     var symbol: String {
         switch self {
         case .server:          return "server.rack"
+        case .chat:            return "bubble.left.and.bubble.right"
+        case .compiler:        return "cpu"
+        case .developer:       return "hammer"
         case .network:         return "network"
         case .performance:     return "bolt.fill"
         case .status:          return "gauge.with.dots.needle.50percent"
