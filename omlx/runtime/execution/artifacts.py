@@ -3,18 +3,46 @@
 Artifacts for OMLX Execution Engine.
 """
 
-from typing import Any
-BackendOperationGraph = Any
-ExecutionGraph = Any
-CacheExecutionGraph = Any
-MemoryExecutionGraph = Any
-BatchExecutionGraph = Any
-SpeculativeExecutionGraph = Any
-ExpertExecutionGraph = Any
-DiffusionExecutionGraph = Any
-
+from typing import Any, List, Optional
 from dataclasses import dataclass, field
-from typing import List, Optional
+from omlx.framework.graph.descriptor import GraphDescriptor
+
+BackendOperationGraph = Any
+
+@dataclass(frozen=True)
+class ExecutionGraph(GraphDescriptor):
+    """Base canonical execution graph."""
+    pass
+
+@dataclass(frozen=True)
+class CacheExecutionGraph(ExecutionGraph):
+    """Execution graph specialized for caching operations."""
+    pass
+
+@dataclass(frozen=True)
+class MemoryExecutionGraph(ExecutionGraph):
+    """Execution graph specialized for memory allocation and movement."""
+    pass
+
+@dataclass(frozen=True)
+class BatchExecutionGraph(ExecutionGraph):
+    """Execution graph specialized for batched execution."""
+    pass
+
+@dataclass(frozen=True)
+class SpeculativeExecutionGraph(ExecutionGraph):
+    """Execution graph specialized for speculative decoding."""
+    pass
+
+@dataclass(frozen=True)
+class ExpertExecutionGraph(ExecutionGraph):
+    """Execution graph specialized for Mixture of Experts (MoE) execution."""
+    pass
+
+@dataclass(frozen=True)
+class DiffusionExecutionGraph(ExecutionGraph):
+    """Execution graph specialized for diffusion modeling."""
+    pass
 
 @dataclass(frozen=True)
 class SpeculativeExecutionReport:
