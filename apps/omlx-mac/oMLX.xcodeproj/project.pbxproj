@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		020C4528A0886580ACCAF007 /* SessionDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CDF41F1845975FC56F82364 /* SessionDTO.swift */; };
+		1AC3455198AC71B5B07C8B5F /* DiagnosticsDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DE4ACDA53AF86D2749B651 /* DiagnosticsDTO.swift */; };
 		1DDDDDDDDDDDDDDDDDDDDDD1 /* oMLXApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCCCCCCCCCCCCCCCCCCCCC1 /* oMLXApp.swift */; };
 		1DDDDDDDDDDDDDDDDDDDDDD2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCCCCCCCCCCCCCCCCCCCCC2 /* AppDelegate.swift */; };
 		1DDDDDDDDDDDDDDDDDDDDDD3 /* MenubarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCCCCCCCCCCCCCCCCCCCCC3 /* MenubarController.swift */; };
@@ -26,14 +28,18 @@
 		2BB00000000000000000000B /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC00000000000000000000B /* StatusPill.swift */; };
 		2BB00000000000000000000C /* CodeChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC00000000000000000000C /* CodeChip.swift */; };
 		2BB00000000000000000000D /* ScreenScaffold.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC00000000000000000000D /* ScreenScaffold.swift */; };
+		31CB4061A152756F83D37996 /* SessionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B9646FEA617E0B4026C87A6 /* SessionService.swift */; };
+		32B94901B0857DA11BD59E53 /* ModelManagementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BB84D70877E728D40345DCA /* ModelManagementService.swift */; };
 		3BB000000000000000000001 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CC000000000000000000001 /* AppConfig.swift */; };
 		3BB000000000000000000002 /* MenubarStatsPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CC000000000000000000002 /* MenubarStatsPoller.swift */; };
 		3BB000000000000000000003 /* MenubarVisibilityWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CC000000000000000000003 /* MenubarVisibilityWatcher.swift */; };
 		3BB000000000000000000004 /* ShellEnvWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CC000000000000000000004 /* ShellEnvWriter.swift */; };
 		3BB000000000000000000005 /* APIKeyGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CC000000000000000000005 /* APIKeyGenerator.swift */; };
+		3F214A98B273D1CC5A0AE72C /* GenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50942E78F727DD380BB741B /* GenerationService.swift */; };
 		4BB000000000000000000001 /* PortConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC000000000000000000001 /* PortConflictResolver.swift */; };
 		4BB000000000000000000002 /* SignalHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC000000000000000000002 /* SignalHandlers.swift */; };
 		4BB000000000000000000003 /* AppControlServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC000000000000000000003 /* AppControlServer.swift */; };
+		5C484FC3931453ADA6F92108 /* PlatformDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1084538BFEFB31A019BAC07 /* PlatformDTO.swift */; };
 		6BB000000000000000000001 /* AppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CC000000000000000000001 /* AppView.swift */; };
 		6BB000000000000000000002 /* AppSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CC000000000000000000002 /* AppSection.swift */; };
 		6BB000000000000000000004 /* ServerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CC000000000000000000004 /* ServerScreen.swift */; };
@@ -67,6 +73,7 @@
 		8BB000000000000000000008 /* ProfileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC000000000000000000008 /* ProfileViews.swift */; };
 		8BB000000000000000000009 /* ProfileWorkingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC000000000000000000009 /* ProfileWorkingState.swift */; };
 		8BB00000000000000000000A /* MSTaskDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC00000000000000000000A /* MSTaskDTO.swift */; };
+		97D948C4847778083247287F /* MockGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2377463AB681145EA64094B8 /* MockGenerationService.swift */; };
 		9BB000000000000000000001 /* SubKeyDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CC000000000000000000001 /* SubKeyDTO.swift */; };
 		9BB000000000000000000002 /* OQDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CC000000000000000000002 /* OQDTO.swift */; };
 		9BB000000000000000000003 /* HFUploadDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CC000000000000000000003 /* HFUploadDTO.swift */; };
@@ -88,9 +95,13 @@
 		AAD9D52D2FE284D100FAEA05 /* NetworkScreenVM.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD9D52C2FE284D100FAEA05 /* NetworkScreenVM.swift */; };
 		AAD9D52F2FE284E200FAEA05 /* PerformanceScreenVM.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD9D52E2FE284E200FAEA05 /* PerformanceScreenVM.swift */; };
 		ABB000000000000000000001 /* WelcomeWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACC000000000000000000001 /* WelcomeWindow.swift */; };
+		B9DE48D49EBA9B6DE697BEE7 /* PreviewMocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FEC469B87194AE1A11CAC69 /* PreviewMocks.swift */; };
 		BBB000000000000000000002 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = BCC000000000000000000002 /* Localizable.xcstrings */; };
 		BBB000000000000000000004 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC000000000000000000003 /* AppUpdater.swift */; };
 		BBB000000000000000000005 /* ReleasesChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC000000000000000000004 /* ReleasesChecker.swift */; };
+		BF1B47378E3F8255AB362A02 /* GenerationDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99524506A90656448560F2F7 /* GenerationDTO.swift */; };
+		CF054AF4886EFF90794CC514 /* DiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41EE477D88FCC6C0BA37BAC1 /* DiagnosticsService.swift */; };
+		D8A24B36901C2608FC115F28 /* PlatformService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAC4A52A26B3B7BFE158981 /* PlatformService.swift */; };
 		DBB000000000000000000001 /* AppServicesPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC000000000000000000001 /* AppServicesPathTests.swift */; };
 		DBB000000000000000000002 /* AppConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC000000000000000000002 /* AppConfigTests.swift */; };
 		DBB000000000000000000003 /* ServerScreenVMStorageDiffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC000000000000000000003 /* ServerScreenVMStorageDiffTests.swift */; };
@@ -138,6 +149,8 @@
 		1CCCCCCCCCCCCCCCCCCCCCC7 /* oMLX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = oMLX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CCCCCCCCCCCCCCCCCCCCCC8 /* PythonRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PythonRuntime.swift; sourceTree = "<group>"; };
 		1CCCCCCCCCCCCCCCCCCCCCC9 /* ServerProcess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerProcess.swift; sourceTree = "<group>"; };
+		1CDF41F1845975FC56F82364 /* SessionDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SessionDTO.swift; path = Sources/Net/DTO/SessionDTO.swift; sourceTree = SOURCE_ROOT; };
+		2377463AB681145EA64094B8 /* MockGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MockGenerationService.swift; path = Tests/oMLXTests/Mocks/MockGenerationService.swift; sourceTree = SOURCE_ROOT; };
 		2CC000000000000000000001 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		2CC000000000000000000002 /* Squircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Squircle.swift; sourceTree = "<group>"; };
 		2CC000000000000000000003 /* Glass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glass.swift; sourceTree = "<group>"; };
@@ -156,9 +169,13 @@
 		3CC000000000000000000003 /* MenubarVisibilityWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenubarVisibilityWatcher.swift; sourceTree = "<group>"; };
 		3CC000000000000000000004 /* ShellEnvWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellEnvWriter.swift; sourceTree = "<group>"; };
 		3CC000000000000000000005 /* APIKeyGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyGenerator.swift; sourceTree = "<group>"; };
+		41EE477D88FCC6C0BA37BAC1 /* DiagnosticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DiagnosticsService.swift; path = Sources/Services/DiagnosticsService.swift; sourceTree = SOURCE_ROOT; };
 		4CC000000000000000000001 /* PortConflictResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortConflictResolver.swift; sourceTree = "<group>"; };
 		4CC000000000000000000002 /* SignalHandlers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalHandlers.swift; sourceTree = "<group>"; };
 		4CC000000000000000000003 /* AppControlServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppControlServer.swift; sourceTree = "<group>"; };
+		5FEC469B87194AE1A11CAC69 /* PreviewMocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PreviewMocks.swift; path = Sources/Services/Previews/PreviewMocks.swift; sourceTree = SOURCE_ROOT; };
+		69DE4ACDA53AF86D2749B651 /* DiagnosticsDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DiagnosticsDTO.swift; path = Sources/Net/DTO/DiagnosticsDTO.swift; sourceTree = SOURCE_ROOT; };
+		6BB84D70877E728D40345DCA /* ModelManagementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ModelManagementService.swift; path = Sources/Services/ModelManagementService.swift; sourceTree = SOURCE_ROOT; };
 		6CC000000000000000000001 /* AppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppView.swift; sourceTree = "<group>"; };
 		6CC000000000000000000002 /* AppSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSection.swift; sourceTree = "<group>"; };
 		6CC000000000000000000004 /* ServerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerScreen.swift; sourceTree = "<group>"; };
@@ -174,6 +191,7 @@
 		6CC00000000000000000000E /* AccuracyBenchScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccuracyBenchScreen.swift; sourceTree = "<group>"; };
 		6CC00000000000000000000F /* NetworkScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScreen.swift; sourceTree = "<group>"; };
 		6CC000000000000000000010 /* PerformanceScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceScreen.swift; sourceTree = "<group>"; };
+		7B9646FEA617E0B4026C87A6 /* SessionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SessionService.swift; path = Sources/Services/SessionService.swift; sourceTree = SOURCE_ROOT; };
 		7CC000000000000000000001 /* AppServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppServices.swift; sourceTree = "<group>"; };
 		7CC000000000000000000002 /* OMLXClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OMLXClient.swift; sourceTree = "<group>"; };
 		7CC000000000000000000003 /* Endpoints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Endpoints.swift; sourceTree = "<group>"; };
@@ -192,6 +210,8 @@
 		8CC000000000000000000008 /* ProfileViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViews.swift; sourceTree = "<group>"; };
 		8CC000000000000000000009 /* ProfileWorkingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileWorkingState.swift; sourceTree = "<group>"; };
 		8CC00000000000000000000A /* MSTaskDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSTaskDTO.swift; sourceTree = "<group>"; };
+		99524506A90656448560F2F7 /* GenerationDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GenerationDTO.swift; path = Sources/Net/DTO/GenerationDTO.swift; sourceTree = SOURCE_ROOT; };
+		9AAC4A52A26B3B7BFE158981 /* PlatformService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlatformService.swift; path = Sources/Services/PlatformService.swift; sourceTree = SOURCE_ROOT; };
 		9CC000000000000000000001 /* SubKeyDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubKeyDTO.swift; sourceTree = "<group>"; };
 		9CC000000000000000000002 /* OQDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OQDTO.swift; sourceTree = "<group>"; };
 		9CC000000000000000000003 /* HFUploadDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HFUploadDTO.swift; sourceTree = "<group>"; };
@@ -216,6 +236,7 @@
 		BCC000000000000000000002 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		BCC000000000000000000003 /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
 		BCC000000000000000000004 /* ReleasesChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleasesChecker.swift; sourceTree = "<group>"; };
+		C1084538BFEFB31A019BAC07 /* PlatformDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlatformDTO.swift; path = Sources/Net/DTO/PlatformDTO.swift; sourceTree = SOURCE_ROOT; };
 		DCC000000000000000000001 /* AppServicesPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppServicesPathTests.swift; sourceTree = "<group>"; };
 		DCC000000000000000000002 /* AppConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigTests.swift; sourceTree = "<group>"; };
 		DCC000000000000000000003 /* ServerScreenVMStorageDiffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerScreenVMStorageDiffTests.swift; sourceTree = "<group>"; };
@@ -241,6 +262,7 @@
 		DCC000000000000000000106 /* ReleasesCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleasesCheckerTests.swift; sourceTree = "<group>"; };
 		DCC000000000000000000107 /* ModelsScreenSortingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsScreenSortingTests.swift; sourceTree = "<group>"; };
 		DCC000000000000000000108 /* ModelSettingsScreenVMTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSettingsScreenVMTests.swift; sourceTree = "<group>"; };
+		E50942E78F727DD380BB741B /* GenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GenerationService.swift; path = Sources/Services/GenerationService.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -269,6 +291,17 @@
 				DEE000000000000000000001 /* Tests */,
 				1BBBBBBBBBBBBBBBBBBBBBB5 /* Resources */,
 				1BBBBBBBBBBBBBBBBBBBBBB6 /* Products */,
+				99524506A90656448560F2F7 /* GenerationDTO.swift */,
+				C1084538BFEFB31A019BAC07 /* PlatformDTO.swift */,
+				1CDF41F1845975FC56F82364 /* SessionDTO.swift */,
+				69DE4ACDA53AF86D2749B651 /* DiagnosticsDTO.swift */,
+				E50942E78F727DD380BB741B /* GenerationService.swift */,
+				7B9646FEA617E0B4026C87A6 /* SessionService.swift */,
+				6BB84D70877E728D40345DCA /* ModelManagementService.swift */,
+				41EE477D88FCC6C0BA37BAC1 /* DiagnosticsService.swift */,
+				9AAC4A52A26B3B7BFE158981 /* PlatformService.swift */,
+				5FEC469B87194AE1A11CAC69 /* PreviewMocks.swift */,
+				2377463AB681145EA64094B8 /* MockGenerationService.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -714,6 +747,16 @@
 				ABB000000000000000000001 /* WelcomeWindow.swift in Sources */,
 				BBB000000000000000000004 /* AppUpdater.swift in Sources */,
 				BBB000000000000000000005 /* ReleasesChecker.swift in Sources */,
+				BF1B47378E3F8255AB362A02 /* GenerationDTO.swift in Sources */,
+				5C484FC3931453ADA6F92108 /* PlatformDTO.swift in Sources */,
+				020C4528A0886580ACCAF007 /* SessionDTO.swift in Sources */,
+				1AC3455198AC71B5B07C8B5F /* DiagnosticsDTO.swift in Sources */,
+				3F214A98B273D1CC5A0AE72C /* GenerationService.swift in Sources */,
+				31CB4061A152756F83D37996 /* SessionService.swift in Sources */,
+				32B94901B0857DA11BD59E53 /* ModelManagementService.swift in Sources */,
+				CF054AF4886EFF90794CC514 /* DiagnosticsService.swift in Sources */,
+				D8A24B36901C2608FC115F28 /* PlatformService.swift in Sources */,
+				B9DE48D49EBA9B6DE697BEE7 /* PreviewMocks.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -743,6 +786,7 @@
 				DBB000000000000000000106 /* ReleasesCheckerTests.swift in Sources */,
 				DBB000000000000000000107 /* ModelsScreenSortingTests.swift in Sources */,
 				DBB000000000000000000108 /* ModelSettingsScreenVMTests.swift in Sources */,
+				97D948C4847778083247287F /* MockGenerationService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
