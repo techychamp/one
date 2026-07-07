@@ -7,8 +7,18 @@ Verifies ExecutionEngine and Dispatcher adhere to their execution boundaries.
 import pytest
 from unittest.mock import MagicMock
 from collections import namedtuple
+from typing import Any
+from dataclasses import dataclass
+
+@dataclass
+class MockSession:
+    execution_context: Any
+
 
 from omlx.runtime.execution.dispatcher import SequentialExecutionDispatcher
+from omlx.runtime.execution.artifacts import CacheExecutionGraph
+from omlx.runtime.execution.engine import ExecutionEngine
+from unittest.mock import Mock
 from omlx.runtime.execution.context import ExecutionContext
 from omlx.runtime.execution.types import ExecutionStatus
 
@@ -72,3 +82,25 @@ def test_dispatcher_execution_order_adherence():
     assert calls[0][0][0] == "OperationY"
     assert calls[1][0][0] == "OperationZ"
     assert calls[2][0][0] == "OperationX"
+
+def test_execution_engine_consumes_multiple_execution_graphs():
+    mock_executor = Mock()
+    mock_executor.execute.return_value = MagicMock(status=ExecutionStatus.COMPLETED)
+
+    engine = ExecutionEngine(executor=mock_executor)
+
+    from types import MappingProxyType
+    mock_graph_1 = CacheExecutionGraph(id="cache", nodes=MappingProxyType({}), edges=tuple())
+    mock_graph_2 = CacheExecutionGraph(id="memory", nodes=MappingProxyType({}), edges=tuple())
+
+    context = ExecutionContext(execution_graphs=(mock_graph_1, mock_graph_2))
+    session = MockSession(execution_context=context)
+
+    result = engine.execute(session)
+
+    assert result.status == ExecutionStatus.COMPLETED
+    assert mock_executor.execute.call_count == 2
+
+    calls = mock_executor.execute.call_args_list
+    assert calls[0][0][0] == mock_graph_1
+    assert calls[1][0][0] == mock_graph_2

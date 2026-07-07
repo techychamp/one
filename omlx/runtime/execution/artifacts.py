@@ -3,7 +3,7 @@
 Artifacts for OMLX Execution Engine.
 """
 
-from typing import Any, List, Optional
+from typing import Any, Optional
 from dataclasses import dataclass, field
 from omlx.framework.graph.descriptor import GraphDescriptor
 
@@ -55,14 +55,14 @@ class SpeculativeExecutionReport:
 @dataclass(frozen=True)
 class VerificationWindow:
     """Window of generated tokens to be verified."""
-    draft_tokens: List[int] = field(default_factory=list)
+    draft_tokens: tuple[int, ...] = tuple()
     start_index: int = 0
 
 @dataclass(frozen=True)
 class AcceptanceWindow:
     """Window of accepted tokens after verification."""
-    accepted_tokens: List[int] = field(default_factory=list)
-    rejected_tokens: List[int] = field(default_factory=list)
+    accepted_tokens: tuple[int, ...] = tuple()
+    rejected_tokens: tuple[int, ...] = tuple()
 
 @dataclass(frozen=True)
 class AcceptanceStatistics:
@@ -81,5 +81,5 @@ class VerificationStatistics:
 @dataclass(frozen=True)
 class CommitReport:
     """Report detailing committed tokens and state updates."""
-    committed_tokens: List[int] = field(default_factory=list)
+    committed_tokens: tuple[int, ...] = tuple()
     commit_latency_ms: float = 0.0
