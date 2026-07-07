@@ -43,6 +43,14 @@ class DiffusionExecutionGraph(ExecutionGraph):
     pass
 
 
+
+@dataclass(frozen=True)
+class VerificationResult:
+    """Strongly typed outcome from VerificationExecutionGraph."""
+    accepted: bool
+    accepted_tokens: tuple[int, ...] = tuple()
+    rejected_tokens: tuple[int, ...] = tuple()
+
 @dataclass(frozen=True)
 class VerificationExecutionReport:
     """Report detailing verification outcome and latency."""
@@ -108,4 +116,4 @@ class CommitReport:
 class RuntimeSpeculativeState:
     """Runtime state wrapper for speculative execution."""
     speculative_graph: Optional[SpeculativeExecutionGraph] = None
-    reports: List[Any] = field(default_factory=list)
+    reports: tuple[Any, ...] = field(default_factory=tuple)

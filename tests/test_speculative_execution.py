@@ -27,9 +27,10 @@ class MockExecutor(ExecutionExecutor):
         self.executed_graphs = []
 
     def execute(self, graph, context):
+        from omlx.runtime.execution.artifacts import VerificationResult
         self.executed_graphs.append(graph.id)
         if "verify" in graph.id:
-            return ExecutionResult(status=ExecutionStatus.COMPLETED, model_output={"verified": self.verification_outcome})
+            return ExecutionResult(status=ExecutionStatus.COMPLETED, model_output=VerificationResult(accepted=self.verification_outcome))
         return ExecutionResult(status=ExecutionStatus.COMPLETED, model_output={})
 
 def create_mock_speculative_graph():
@@ -113,3 +114,32 @@ def test_speculative_execution_rejected():
     assert not any(isinstance(r, AcceptanceExecutionReport) for r in reports)
     assert any(isinstance(r, RollbackExecutionReport) for r in reports)
     assert any(isinstance(r, SpeculativeExecutionReport) for r in reports)
+
+def test_speculative_execution_cache_consistency():
+    """Verify that speculative execution does not break cache session semantics."""
+    session = RuntimeSession.create()
+
+    class MockCacheSession:
+        def __init__(self):
+            # A simple stub simulating the presence of a CACHE-002 cache session
+            from types import SimpleNamespace
+            self.cache_plan = SimpleNamespace(plan_id="test_cache_plan")
+            self.state = "active"
+
+    session.cache_session = MockCacheSession()
+
+    spec_graph = create_mock_speculative_graph()
+    session.execution_context = ExecutionContext(
+        speculative_execution_graph=spec_graph,
+        cache_session=session.cache_session
+    )
+
+    executor = MockExecutor(verification_outcome=True)
+    engine = ExecutionEngine(executor=executor)
+
+    result = engine.execute(session)
+
+    # Must complete execution successfully without throwing or mutating cache inappropriately
+    assert result.status == ExecutionStatus.COMPLETED
+    assert session.cache_session.state == "active"
+    assert getattr(session.execution_context, "cache_session") is not None

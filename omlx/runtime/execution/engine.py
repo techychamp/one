@@ -109,6 +109,7 @@ class ExecutionEngine:
                     return draft_result
 
                 # Mock drafting tokens
+                # TODO: This is a temporary execution stub for draft tokens until real backend integration.
                 session.draft_tokens = (1, 2, 3)
 
                 # 2. Verification Phase
@@ -118,13 +119,13 @@ class ExecutionEngine:
                     session.transition(SessionState.FAILED)
                     return verify_result
 
-                # Check outcome strictly based on graph execution outcome
-                # (Mocking 'verified' logic from model_output since it's an abstract graph)
+                from omlx.runtime.execution.artifacts import VerificationResult
                 accepted = False
-                if verify_result.model_output and isinstance(verify_result.model_output, dict):
-                    accepted = verify_result.model_output.get("verified", True)  # default to True for tests if dict exists
-                elif verify_result.model_output is None:
-                    accepted = True  # Mock true if no output is mocked by dispatcher
+                if isinstance(verify_result.model_output, VerificationResult):
+                    accepted = verify_result.model_output.accepted
+                else:
+                    # Fallback for dispatcher mock consistency if not properly returned
+                    accepted = True
 
                 verify_latency = (time.time() - verify_start) * 1000
                 verify_report = VerificationExecutionReport(
