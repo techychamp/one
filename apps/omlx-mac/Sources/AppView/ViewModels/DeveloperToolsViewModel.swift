@@ -37,9 +37,9 @@ final class DeveloperToolsViewModel: @unchecked Sendable {
     var isLoading = false
 
     init(services: AppServices) {
-        self.platformService = services.platform
-        self.diagnosticsService = services.diagnostics
-        self.generationService = services.generation
+        self.platformService = services.platformService
+        self.diagnosticsService = services.diagnosticsService
+        self.generationService = services.generationService
         self.sessionService = services.sessionService
     }
 

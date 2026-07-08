@@ -96,11 +96,11 @@ private struct RuntimeOverviewCard: View {
             }
         }
         .padding()
-        .background(theme.cardBg)
+        .background(theme.groupBg)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(theme.cardBorder, lineWidth: 1)
+                .stroke(theme.groupBorder, lineWidth: 1)
         )
     }
 }
@@ -124,11 +124,11 @@ private struct RuntimeConfigurationCard: View {
             }
         }
         .padding()
-        .background(theme.cardBg)
+        .background(theme.groupBg)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(theme.cardBorder, lineWidth: 1)
+                .stroke(theme.groupBorder, lineWidth: 1)
         )
     }
 }

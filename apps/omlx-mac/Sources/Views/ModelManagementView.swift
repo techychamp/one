@@ -61,7 +61,7 @@ struct ModelManagementView: View {
         }
         .padding()
         .background(theme.windowBg)
-        .border(width: 1, edges: [.bottom], color: theme.cardBorder)
+        .border(width: 1, edges: [.bottom], color: theme.groupBorder)
     }
     
     private var modelList: some View {
@@ -140,11 +140,11 @@ private struct ModelCard: View {
                 .accessibilityLabel("Model management operations are not supported by the current API")
         }
         .padding()
-        .background(theme.cardBg)
+        .background(theme.groupBg)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(theme.cardBorder, lineWidth: 1)
+                .stroke(theme.groupBorder, lineWidth: 1)
         )
     }
 }

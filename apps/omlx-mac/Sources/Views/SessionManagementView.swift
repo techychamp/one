@@ -50,11 +50,11 @@ struct SessionManagementView: View {
                 .accessibilityLabel("Session editing features are unavailable in the current Runtime API")
         }
         .padding()
-        .background(theme.cardBg)
+        .background(theme.groupBg)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(theme.cardBorder, lineWidth: 1)
+                .stroke(theme.groupBorder, lineWidth: 1)
         )
     }
 }

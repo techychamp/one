@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CompilerPipelineView: View {
     @ObservedObject var viewModel: CompilerViewModel
+    @Environment(\.omlxTheme) private var theme
 
     let stages = [
         "Planning",
@@ -41,7 +42,7 @@ struct CompilerPipelineView: View {
 
                     if index < stages.count - 1 {
                         Rectangle()
-                            .fill(Color.gray.opacity(0.3))
+                            .fill(Color(theme.groupBorder))
                             .frame(height: 2)
                             .frame(maxWidth: .infinity)
                             .padding(.bottom, 20) // align with circles

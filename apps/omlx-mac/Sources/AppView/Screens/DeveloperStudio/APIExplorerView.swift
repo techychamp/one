@@ -45,7 +45,7 @@ private struct EndpointCard: View {
             HStack {
                 Text(endpoint.path)
                     .font(.headline)
-                    .foregroundColor(theme.textPrimary)
+                    .foregroundColor(theme.text)
                 Spacer()
                 Text(endpoint.apiVersion)
                     .font(.caption)

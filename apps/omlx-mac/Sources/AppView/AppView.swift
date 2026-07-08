@@ -16,10 +16,12 @@ struct AppView: View {
 
     @Environment(\.colorScheme) private var scheme
     @Environment(AppServices.self) private var services
+    @EnvironmentObject private var shortcutManager: KeyboardShortcutManager
+    @EnvironmentObject private var windowStateManager: WindowStateManager
 
     var body: some View {
         let theme = scheme == .dark ? OMLXTheme.dark : OMLXTheme.light
-        let section = selectedSection
+        let section = AppSection(rawValue: windowStateManager.selectedWorkspace) ?? .status
 
         NavigationSplitView {
             SettingsSidebar(selection: bindingForSelection())
@@ -65,6 +67,26 @@ struct AppView: View {
             )
                 .environment(\.omlxTheme, theme)
         }
+        .overlay {
+            if shortcutManager.showGlobalSearch {
+                ZStack {
+                    Color.primary.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            shortcutManager.showGlobalSearch = false
+                        }
+                    
+                    GlobalSearchView(services: services)
+                }
+            }
+        }
+        .background {
+            Button("") {
+                shortcutManager.showGlobalSearch.toggle()
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .opacity(0)
+        }
     }
 
     /// Drilling out of ModelSettingsScreen via the sidebar (changing section)
@@ -72,17 +94,17 @@ struct AppView: View {
     /// the detail when the user returns to Models.
     private func bindingForSelection() -> Binding<AppSection?> {
         Binding(
-            get: { selection },
+            get: { AppSection(rawValue: windowStateManager.selectedWorkspace) },
             set: { newValue in
                 guard let newValue else { return }
                 if newValue != .models { services.modelDetailID = nil }
-                selection = newValue
+                windowStateManager.navigate(to: newValue.rawValue)
             }
         )
     }
 
     private var selectedSection: AppSection {
-        selection ?? .status
+        AppSection(rawValue: windowStateManager.selectedWorkspace) ?? .status
     }
 
     private var detailTitle: String? {

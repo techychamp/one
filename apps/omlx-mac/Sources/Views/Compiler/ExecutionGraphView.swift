@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ExecutionGraphView: View {
+    @ObservedObject var viewModel: CompilerViewModel
+    @Environment(\.omlxTheme) private var theme
     @State private var scale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
 
@@ -15,7 +17,7 @@ struct ExecutionGraphView: View {
 
             GeometryReader { geometry in
                 ZStack {
-                    Color.gray.opacity(0.1)
+                    Color(theme.groupBorder)
                         .cornerRadius(8)
 
                     VStack(spacing: 40) {
@@ -74,9 +76,11 @@ struct GraphNodePlaceholder: View {
 }
 
 struct GraphEdgePlaceholder: View {
+    @Environment(\.omlxTheme) private var theme
+    
     var body: some View {
         Rectangle()
-            .fill(Color.gray)
+            .fill(Color(theme.groupBorder))
             .frame(width: 2, height: 40)
     }
 }

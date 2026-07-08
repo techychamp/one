@@ -8,7 +8,7 @@ struct LogExplorerView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 if let compiler = viewModel.compilerInspection {
-                    SectionHeader(title: "Compiler Diagnostics")
+                    SectionHeader("Compiler Diagnostics")
                     VStack(alignment: .leading) {
                         Text("Version: \(compiler.compilerVersion)")
                         Text("Status: \(compiler.graphStatus)")
@@ -19,7 +19,7 @@ struct LogExplorerView: View {
                 }
 
                 if let exec = viewModel.executionMetrics {
-                    SectionHeader(title: "Execution Metrics")
+                    SectionHeader("Execution Metrics")
                     VStack(alignment: .leading) {
                         Text("Prompt Tokens: \(exec.promptTokens)")
                         Text("Completion Tokens: \(exec.completionTokens)")
@@ -31,7 +31,7 @@ struct LogExplorerView: View {
                 }
 
                 if let apple = viewModel.appleMetrics {
-                    SectionHeader(title: "Apple Silicon Metrics")
+                    SectionHeader("Apple Silicon Metrics")
                     VStack(alignment: .leading) {
                         Text("Memory Used: \(apple.memoryUsed) bytes")
                         Text("ANE Utilization: \(String(format: "%.1f", apple.aneUtilization))%")

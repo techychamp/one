@@ -14,7 +14,7 @@ struct RuntimeEventView: View {
                         .foregroundColor(.red)
                 } else {
                     if let status = viewModel.runtimeStatus {
-                        SectionHeader(title: "Runtime Status")
+                        SectionHeader("Runtime Status")
                         VStack(alignment: .leading) {
                             Text("Status: \(status.status)")
                             Text("Version: \(status.version)")
@@ -26,7 +26,7 @@ struct RuntimeEventView: View {
                     }
 
                     if let caps = viewModel.capabilities {
-                        SectionHeader(title: "Capabilities")
+                        SectionHeader("Capabilities")
                         VStack(alignment: .leading) {
                             Text("MoE: \(caps.supportsMoe ? "Yes" : "No")")
                             Text("Speculation: \(caps.supportsSpeculation ? "Yes" : "No")")
@@ -38,11 +38,10 @@ struct RuntimeEventView: View {
                     }
 
                     if !viewModel.sessions.isEmpty {
-                        SectionHeader(title: "Sessions")
-                        ForEach(viewModel.sessions, id: \.id) { session in
+                        SectionHeader("Sessions")
+                        ForEach(viewModel.sessions, id: \.sessionId) { session in
                             VStack(alignment: .leading) {
-                                Text("ID: \(session.id)")
-                                Text("Title: \(session.title)")
+                                Text("ID: \(session.sessionId)")
                             }
                             .padding()
                             .background(theme.groupBg)

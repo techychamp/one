@@ -30,16 +30,16 @@ struct CompilerWorkspaceView: View {
 
                             Divider()
 
-                            ExecutionGraphView()
+                            ExecutionGraphView(viewModel: viewModel)
                                 .frame(height: 300)
 
                             Divider()
 
                             HStack(alignment: .top, spacing: 20) {
-                                OptimizationReportView()
+                                OptimizationReportView(viewModel: viewModel)
                                     .frame(maxWidth: .infinity)
 
-                                TimelineView()
+                                TimelineView(viewModel: viewModel)
                                     .frame(maxWidth: .infinity)
                             }
 

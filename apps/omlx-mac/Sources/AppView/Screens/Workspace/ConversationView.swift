@@ -121,7 +121,6 @@ private struct MessageRow: View {
                     .accessibilityHidden(true)
 
                 Markdown(message.content)
-                    .markdownTheme(.omlx)
                     .padding(12)
                     .background(isUser ? theme.accent.opacity(0.1) : theme.groupBg)
                     .cornerRadius(8)

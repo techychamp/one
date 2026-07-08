@@ -48,10 +48,10 @@ private struct TraceStep: View {
         HStack {
             Image(systemName: icon)
                 .frame(width: 24)
-                .foregroundColor(theme.textPrimary)
+                .foregroundColor(theme.text)
             Text(name)
                 .font(.body)
-                .foregroundColor(theme.textPrimary)
+                .foregroundColor(theme.text)
             Spacer()
         }
     }

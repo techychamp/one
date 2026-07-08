@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct OptimizationReportView: View {
+    @ObservedObject var viewModel: CompilerViewModel
+    @Environment(\.omlxTheme) private var theme
+
     var body: some View {
         VStack(alignment: .leading) {
             Text("Optimization Reports")
@@ -16,7 +19,7 @@ struct OptimizationReportView: View {
             }
             .listStyle(.plain)
             .frame(height: 150)
-            .background(Color.gray.opacity(0.1))
+            .background(Color(theme.groupBorder))
             .cornerRadius(8)
         }
     }
