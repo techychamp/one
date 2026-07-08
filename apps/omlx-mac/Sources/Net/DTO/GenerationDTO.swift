@@ -13,10 +13,16 @@ struct GenerateRequest: Encodable, Sendable {
     }
 }
 
-struct ChatMessage: Codable, Sendable {
+struct ChatMessage: Codable, Sendable, Identifiable {
+    var id: UUID = UUID()
     let role: String
     let content: String
     
+    enum CodingKeys: String, CodingKey {
+        case role
+        case content
+    }
+
     init(role: String, content: String) {
         self.role = role
         self.content = content

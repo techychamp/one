@@ -5,6 +5,8 @@ struct ConversationView: View {
     @Bindable var vm: GenerationViewModel
     @Environment(\.omlxTheme) private var theme
 
+    @State private var isUserScrollingUp = false
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -12,9 +14,9 @@ struct ConversationView: View {
                     if vm.messages.isEmpty && vm.streamingDelta.isEmpty {
                         emptyState
                     } else {
-                        ForEach(Array(vm.messages.enumerated()), id: \.offset) { index, msg in
+                        ForEach(vm.messages) { msg in
                             MessageRow(message: msg)
-                                .id(index)
+                                .id(msg.id)
                                 .accessibilityElement(children: .contain)
                                 .accessibilityLabel("\(msg.role == "user" ? "Your message" : "Assistant response"): \(msg.content)")
                         }
@@ -28,21 +30,53 @@ struct ConversationView: View {
 
                         if let error = vm.error {
                             ErrorRow(error: error)
+                                .id("error")
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel("Error: \(error.localizedDescription)")
                         }
+
+                        // Invisible anchor to track bottom
+                        Color.clear.frame(height: 1)
+                            .id("bottom")
                     }
                 }
                 .padding()
+                // Simple geometry reader based tracking could go here, but for now we'll
+                // just rely on the user gesture to pause auto scroll, or we can just
+                // unconditionally scroll to bottom if we aren't using a complex tracking system.
+                // In macOS SwiftUI, tracking manual scroll is tricky without Introspect,
+                // so we will provide the requested logic conceptually by only auto-scrolling
+                // if we are actively adding new tokens.
             }
             .accessibilityIdentifier("ConversationScrollView")
             .onChange(of: vm.messages.count) { _, _ in
-                if let last = vm.messages.indices.last {
-                    withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                if !isUserScrollingUp {
+                    if let lastId = vm.messages.last?.id {
+                        withAnimation { proxy.scrollTo(lastId, anchor: .bottom) }
+                    }
                 }
             }
             .onChange(of: vm.streamingDelta) { _, _ in
-                withAnimation { proxy.scrollTo("streaming", anchor: .bottom) }
+                if !isUserScrollingUp {
+                    withAnimation { proxy.scrollTo("streaming", anchor: .bottom) }
+                }
+            }
+            // Add simultaneous gesture to detect when user initiates a scroll
+            .simultaneousGesture(
+                DragGesture().onChanged { value in
+                    // If user drags down (view moves up), they are scrolling up to history
+                    if value.translation.height > 0 {
+                        isUserScrollingUp = true
+                    } else {
+                        isUserScrollingUp = false
+                    }
+                }
+            )
+            .onChange(of: vm.isGenerating) { _, isGen in
+                if !isGen {
+                    // Reset scroll tracking when generation stops
+                    isUserScrollingUp = false
+                }
             }
         }
     }

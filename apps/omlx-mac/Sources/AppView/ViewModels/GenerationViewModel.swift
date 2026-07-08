@@ -21,6 +21,8 @@ final class GenerationViewModel {
     }
 
     func send() async {
+        guard !isGenerating else { return } // Prevent concurrent sends
+
         let draft = currentDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !draft.isEmpty else { return }
 
@@ -61,11 +63,13 @@ final class GenerationViewModel {
             } catch {
                 await MainActor.run {
                     self.error = error
+                    self.streamingDelta = "" // Clear stale partials on error
                 }
             }
 
             await MainActor.run {
                 self.isGenerating = false
+                self.streamTask = nil
             }
         }
     }
@@ -78,7 +82,7 @@ final class GenerationViewModel {
         if !streamingDelta.isEmpty {
             let finalMessage = ChatMessage(role: "assistant", content: streamingDelta)
             messages.append(finalMessage)
-            streamingDelta = ""
+            streamingDelta = "" // Clear after cancellation logic
         }
     }
 
@@ -86,5 +90,6 @@ final class GenerationViewModel {
         stopGeneration()
         messages.removeAll()
         error = nil
+        streamingDelta = ""
     }
 }

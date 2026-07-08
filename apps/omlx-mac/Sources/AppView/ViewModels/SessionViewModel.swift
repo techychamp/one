@@ -31,6 +31,9 @@ final class SessionViewModel {
     }
 
     func deleteSession(_ id: String) {
+        // TODO: This currently updates local state only.
+        // Once the frozen v1 API supports session deletion,
+        // this should call `service.deleteSession(id)` asynchronously.
         sessions.removeAll { $0.sessionId == id }
         if activeSessionId == id {
             activeSessionId = nil
