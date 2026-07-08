@@ -491,6 +491,16 @@ final class ModelSettingsScreenVM {
                     self.activeProfileName = s.activeProfileName
                 }
             }
+            let modelIDs = Set(self.allModels.map { $0.id })
+            if !self.specprefillDraftModel.isEmpty, !modelIDs.contains(self.specprefillDraftModel) {
+                self.specprefillDraftModel = ""
+            }
+            if !self.dflashDraftModel.isEmpty, !modelIDs.contains(self.dflashDraftModel) {
+                self.dflashDraftModel = ""
+            }
+            if !self.vlmMtpDraftModel.isEmpty, !modelIDs.contains(self.vlmMtpDraftModel) {
+                self.vlmMtpDraftModel = ""
+            }
             self.profiles = (try? await modelManagementService.listModelProfiles(id: modelID).profiles) ?? []
             self.templates = (try? await modelManagementService.listProfileTemplates().templates) ?? []
             self.serverDefaultSampling = (try? await platformService.getGlobalSettings().sampling)

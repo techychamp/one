@@ -429,7 +429,7 @@ struct ServerHeroCard: View {
     private var title: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
         let trimmed = version?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmed.isEmpty ? "oMLX" : "oMLX \(trimmed)"
+        return trimmed.isEmpty ? "One" : "One \(trimmed)"
     }
 }
 

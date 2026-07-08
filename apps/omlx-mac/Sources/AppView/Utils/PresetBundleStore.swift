@@ -60,7 +60,7 @@ final class PresetBundleStore {
         let base = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
         ).first ?? FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("oMLX", isDirectory: true)
+        let dir = base.appendingPathComponent("One", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("preset_cache.json")
     }

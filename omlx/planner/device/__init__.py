@@ -1,7 +1,10 @@
-from .artifacts import DevicePlan, ExecutionPlacement, ExecutionAffinity
+from .artifacts import DevicePlan, ExecutionPlacement, ExecutionAffinity, DeviceRequirement
+from .planner import DevicePlanner
 
 __all__ = [
     "DevicePlan",
     "ExecutionPlacement",
-    "ExecutionAffinity"
+    "ExecutionAffinity",
+    "DeviceRequirement",
+    "DevicePlanner"
 ]

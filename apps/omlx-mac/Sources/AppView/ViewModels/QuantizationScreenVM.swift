@@ -132,6 +132,13 @@ final class QuantizationScreenVM {
             self.models = resp.models
             self.allModels = resp.allModels
             self.modelsLoaded = true
+            if !resp.models.isEmpty {
+                if self.selectedModelPath.isEmpty || !resp.models.contains(where: { $0.path == self.selectedModelPath }) {
+                    self.selectedModelPath = resp.models[0].path
+                }
+            } else {
+                self.selectedModelPath = ""
+            }
         } catch {
             self.modelsLoaded = true
             self.lastError = String(localized: "quant.error.load_models",

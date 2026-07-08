@@ -10,7 +10,7 @@
 //      path through the in-app Storage row, so Finder relaunches still
 //      land on the right data root. This is the *only* Swift-side config
 //      we keep — its sole job is to tell us where settings.json lives.
-//   3. Default `~/.omlx`.
+//   3. Default `~/.one`.
 //
 // Every other field (host, port, api_key, model_dirs, hf_endpoint) lives
 // in `<basePath>/settings.json` — owned by the running Python server,
@@ -37,7 +37,7 @@ struct AppConfig: Sendable, Equatable, Codable {
     /// when the app launches.
     var autoStartOnLaunch: Bool
     var apiKey: String?
-    /// Always `OMLX_BASE_PATH` if set, else `~/.omlx`. Set at load() time
+    /// Always `OMLX_BASE_PATH` if set, else `~/.one`. Set at load() time
     /// from the current process env so the running app sees a consistent
     /// view; `AppServices.changeBasePath` updates the env in place when
     /// the user moves their data root.
@@ -176,6 +176,32 @@ struct AppConfig: Sendable, Equatable, Codable {
         if let stored = readBootstrapBasePath() {
             return stored
         }
+        
+        // Migrate old ~/.omlx default directory to ~/.one if it exists
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let oldDefault = home.appendingPathComponent(".omlx", isDirectory: true).path
+        let newDefault = home.appendingPathComponent(".one", isDirectory: true).path
+        let fm = FileManager.default
+        if fm.fileExists(atPath: oldDefault) {
+            if !fm.fileExists(atPath: newDefault) {
+                try? fm.moveItem(atPath: oldDefault, toPath: newDefault)
+            } else if !fm.fileExists(atPath: URL(fileURLWithPath: newDefault).appendingPathComponent("settings.json").path) {
+                // ~/.one exists (e.g. created by CLI shim) but has no settings.json yet.
+                // Move contents from ~/.omlx to ~/.one
+                if let contents = try? fm.contentsOfDirectory(atPath: oldDefault) {
+                    for item in contents {
+                        let src = URL(fileURLWithPath: oldDefault).appendingPathComponent(item).path
+                        let dst = URL(fileURLWithPath: newDefault).appendingPathComponent(item).path
+                        if !fm.fileExists(atPath: dst) {
+                            try? fm.moveItem(atPath: src, toPath: dst)
+                        }
+                    }
+                }
+                // Finally remove the empty old default dir
+                try? fm.removeItem(atPath: oldDefault)
+            }
+        }
+        
         return defaultBasePath()
     }
 
@@ -226,7 +252,7 @@ struct AppConfig: Sendable, Equatable, Codable {
     ///   • bootstrap file (so Finder relaunches and the app-managed CLI shim
     ///     see it without editing shell rc files)
     /// Pass `nil` (or an empty string) to clear every override — the
-    /// "reset to ~/.omlx default" flow. Callers should compare against
+    /// "reset to ~/.one default" flow. Callers should compare against
     /// `defaultBasePath()` first and pass `nil` when the user chose the
     /// default so a default install isn't left with stale state.
     static func persistBasePath(_ path: String?) {
@@ -241,7 +267,7 @@ struct AppConfig: Sendable, Equatable, Codable {
 
     static func defaultBasePath() -> String {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        return home.appendingPathComponent(".omlx", isDirectory: true).path
+        return home.appendingPathComponent(".one", isDirectory: true).path
     }
 
     static func settingsURL(basePath: String) -> URL {
@@ -260,8 +286,13 @@ struct AppConfig: Sendable, Equatable, Codable {
         let base = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
         ).first ?? FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("oMLX", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let oldDir = base.appendingPathComponent("oMLX", isDirectory: true)
+        let dir = base.appendingPathComponent("One", isDirectory: true)
+        let fm = FileManager.default
+        if fm.fileExists(atPath: oldDir.path) && !fm.fileExists(atPath: dir.path) {
+            try? fm.moveItem(at: oldDir, to: dir)
+        }
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
 

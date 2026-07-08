@@ -101,10 +101,9 @@ final class AppServices: NSObject {
 
     @objc private func serverStateDidChange(_ note: Notification) {
         guard let proc = note.object as? ServerProcess, proc === server else { return }
-        // ServerProcess posts on the main queue (via DispatchQueue.main.async
-        // in terminationHandler / @MainActor health-check Task), so we're
-        // already on the main thread here.
-        serverState = proc.state
+        Task { @MainActor in
+            serverState = proc.state
+        }
     }
 
     func updateConfig(_ next: AppConfig) {

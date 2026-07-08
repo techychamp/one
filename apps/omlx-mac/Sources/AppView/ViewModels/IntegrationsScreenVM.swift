@@ -176,6 +176,13 @@ final class IntegrationsScreenVM {
             // Available models
             let models = try await modelManagementService.listModels().models
             self.availableModels = models.map { $0.id }
+            let availSet = Set(self.availableModels)
+            if !self.codexModel.isEmpty, !availSet.contains(self.codexModel) { self.codexModel = "" }
+            if !self.opencodeModel.isEmpty, !availSet.contains(self.opencodeModel) { self.opencodeModel = "" }
+            if !self.openclawModel.isEmpty, !availSet.contains(self.openclawModel) { self.openclawModel = "" }
+            if !self.piModel.isEmpty, !availSet.contains(self.piModel) { self.piModel = "" }
+            if !self.hermesModel.isEmpty, !availSet.contains(self.hermesModel) { self.hermesModel = "" }
+            if !self.copilotModel.isEmpty, !availSet.contains(self.copilotModel) { self.copilotModel = "" }
 
             // Stats — host/port/api_key/cli_prefix for the command builders.
             // Failure here is non-fatal: the screen still works against the

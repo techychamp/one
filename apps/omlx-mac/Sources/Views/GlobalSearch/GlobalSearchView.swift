@@ -72,7 +72,9 @@ struct GlobalSearchView: View {
         .cornerRadius(12)
         .shadow(radius: 20)
         .onAppear {
-            viewModel.performSearch() // load default nav results
+            Task { @MainActor in
+                viewModel.performSearch() // load default nav results
+            }
         }
     }
 }

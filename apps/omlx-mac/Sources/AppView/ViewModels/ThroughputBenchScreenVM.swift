@@ -154,6 +154,13 @@ final class ThroughputBenchScreenVM {
         do {
             let resp = try await modelManagementService.listModels()
             self.models = resp.models
+            if !resp.models.isEmpty {
+                if self.selectedModelId.isEmpty || !resp.models.contains(where: { $0.id == self.selectedModelId }) {
+                    self.selectedModelId = resp.models[0].id
+                }
+            } else {
+                self.selectedModelId = ""
+            }
         } catch {
             // Surface so the user can recover; polling does not depend on this.
             self.lastError = error.omlxDescription

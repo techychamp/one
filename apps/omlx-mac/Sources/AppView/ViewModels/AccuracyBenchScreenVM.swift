@@ -54,6 +54,13 @@ final class AccuracyBenchScreenVM {
         do {
             let resp = try await modelManagementService.listModels()
             self.models = resp.models
+            if !resp.models.isEmpty {
+                if self.selectedModelId.isEmpty || !resp.models.contains(where: { $0.id == self.selectedModelId }) {
+                    self.selectedModelId = resp.models[0].id
+                }
+            } else {
+                self.selectedModelId = ""
+            }
         } catch {
             self.lastError = String(localized: "bench.accuracy.error.load_models",
                                     defaultValue: "Failed to load models: \(error.omlxDescription)",

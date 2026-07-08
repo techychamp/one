@@ -1,0 +1,64 @@
+--- omlx/server.py
++++ omlx/server.py
+@@ -6647,9 +6647,6 @@
+     # Multi-model serving
+     python -m omlx.server --model-dir /path/to/models
+ 
+-    # With pinned models
+-    python -m omlx.server --model-dir /path/to/models --pin llama-3b,qwen-7b
+-
+     # With MCP tools
+     python -m omlx.server --model-dir /path/to/models --mcp-config mcp.json
+ 
+@@ -6662,18 +6659,6 @@
+         required=True,
+         help="Directory containing model subdirectories",
+     )
+-    parser.add_argument(
+-        "--pin",
+-        type=str,
+-        default=None,
+-        help="Comma-separated model names to keep always loaded",
+-    )
+-    parser.add_argument(
+-        "--default-model",
+-        type=str,
+-        default=None,
+-        help="Default model when not specified in request",
+-    )
+     parser.add_argument(
+         "--host",
+         type=str,
+@@ -6692,27 +6677,18 @@
+         default=None,
+         help="Path to MCP configuration file (JSON/YAML)",
+     )
+-    parser.add_argument(
+-        "--max-tokens",
+-        type=int,
+-        default=32768,
+-        help="Default max tokens for generation",
+-    )
+ 
+     args = parser.parse_args()
+ 
+     # Set MCP config for lifespan
+     if args.mcp_config:
+         os.environ["OMLX_MCP_CONFIG"] = args.mcp_config
+ 
+-    # Parse pinned models
+-    pinned_models = args.pin.split(",") if args.pin else []
++    from .settings import GlobalSettings
++    settings = GlobalSettings.load()
++
+     # Initialize server
+     init_server(
+-        model_dir=args.model_dir,
+-        pinned_models=pinned_models,
+-        default_model=args.default_model,
+-        max_tokens=args.max_tokens,
++        model_dirs=[args.model_dir],
++        global_settings=settings,
+     )
+ 
+     # Start server

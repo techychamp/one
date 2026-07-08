@@ -1681,7 +1681,7 @@ class TestResolveDefaultBasePath:
             "omlx.settings.BASE_PATH_BOOTSTRAP_FILE",
             Path("/nonexistent/oMLX/base-path"),
         )
-        assert resolve_default_base_path() == Path.home() / ".omlx"
+        assert resolve_default_base_path() == Path.home() / ".one"
 
     def test_uses_bootstrap_file_when_present(self, monkeypatch, tmp_path):
         monkeypatch.delenv("OMLX_BASE_PATH", raising=False)
@@ -1708,7 +1708,7 @@ class TestResolveDefaultBasePath:
         bootstrap_file.write_text("   \n", encoding="utf-8")
         monkeypatch.setattr("omlx.settings.BASE_PATH_BOOTSTRAP_FILE", bootstrap_file)
 
-        assert resolve_default_base_path() == Path.home() / ".omlx"
+        assert resolve_default_base_path() == Path.home() / ".one"
 
     def test_global_settings_load_uses_resolver_when_no_base_path_given(
         self, monkeypatch, tmp_path

@@ -45,9 +45,11 @@ struct WorkspaceScreen: View {
             }
         }
         .onAppear {
-            self.generationVM = GenerationViewModel(service: services.generationService)
-            self.sessionVM = SessionViewModel(service: services.sessionService)
-            Task { await self.sessionVM?.fetchSessions() }
+            Task { @MainActor in
+                self.generationVM = GenerationViewModel(service: services.generationService)
+                self.sessionVM = SessionViewModel(service: services.sessionService)
+                await self.sessionVM?.fetchSessions()
+            }
         }
     }
 }

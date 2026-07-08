@@ -1701,7 +1701,7 @@ def init_server(
 
     # Initialize model settings manager
     base_path = (
-        Path(global_settings.base_path) if global_settings else Path.home() / ".omlx"
+        Path(global_settings.base_path) if global_settings else Path.home() / ".one"
     )
     _server_state.settings_manager = ModelSettingsManager(base_path)
 

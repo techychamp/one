@@ -838,10 +838,12 @@ private struct UploadModalView: View {
         .frame(minHeight: 480)
         .background(theme.windowBg)
         .onAppear {
-            repoName = task.outputName
-            readmeSourcePath = ""
-            addRedownloadNotice = true
-            localError = nil
+            Task { @MainActor in
+                repoName = task.outputName
+                readmeSourcePath = ""
+                addRedownloadNotice = true
+                localError = nil
+            }
         }
     }
 

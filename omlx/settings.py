@@ -40,11 +40,11 @@ logger = logging.getLogger(__name__)
 SETTINGS_VERSION = "1.0"
 
 # Default base path
-DEFAULT_BASE_PATH = Path.home() / ".omlx"
+DEFAULT_BASE_PATH = Path.home() / ".one"
 
 # One-line bootstrap file the macOS app writes when the user moves their data root
 BASE_PATH_BOOTSTRAP_FILE = (
-    Path.home() / "Library" / "Application Support" / "oMLX" / "base-path"
+    Path.home() / "Library" / "Application Support" / "One" / "base-path"
 )
 
 
@@ -53,7 +53,7 @@ def resolve_default_base_path() -> Path:
     Resolve the base path to use when none was passed explicitly.
 
     Priority: ``OMLX_BASE_PATH`` env var > the macOS app's bootstrap file >
-    ``~/.omlx``. This matches AppConfig.currentBasePath() in the Swift app
+    ``~/.one``. This matches AppConfig.currentBasePath() in the Swift app
     so the CLI and GUI agree on where settings.json lives.
     """
     env_value = os.environ.get("OMLX_BASE_PATH")
@@ -200,7 +200,7 @@ class ServerSettings:
 class ModelSettings:
     """Model configuration settings."""
 
-    model_dirs: list[str] = field(default_factory=list)  # [] means ~/.omlx/models
+    model_dirs: list[str] = field(default_factory=list)  # [] means ~/.one/models
     model_dir: str | None = None  # Deprecated: kept for backward compatibility
     model_fallback: bool = False  # Use default model when requested model not found
 
@@ -293,7 +293,7 @@ class CacheSettings:
 
     enabled: bool = True
     hot_cache_only: bool = False
-    ssd_cache_dir: str | None = None  # None means ~/.omlx/cache
+    ssd_cache_dir: str | None = None  # None means ~/.one/cache
     ssd_cache_max_size: str = "auto"  # "auto" means 10% of SSD capacity
     hot_cache_max_size: str = "0"  # "0" = disabled, e.g. "8GB"
     initial_cache_blocks: int = 256  # Starting blocks (grows dynamically)
@@ -814,7 +814,7 @@ class GlobalSettings:
         Args:
             base_path: Base directory for oMLX (default: resolved via
                 OMLX_BASE_PATH env var, the macOS app's bootstrap file,
-                then ~/.omlx).
+                then ~/.one).
             cli_args: Argparse namespace with CLI arguments.
 
         Returns:
@@ -1481,7 +1481,7 @@ def init_settings(
     Args:
         base_path: Base directory for oMLX (default: resolved via
                 OMLX_BASE_PATH env var, the macOS app's bootstrap file,
-                then ~/.omlx).
+                then ~/.one).
         cli_args: Argparse namespace with CLI arguments.
 
     Returns:
