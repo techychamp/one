@@ -15,5 +15,6 @@ The Workspace was designed keeping accessibility top of mind:
    - The `PromptComposer` captures `onSubmit` explicitly to map the Enter key to sending messages without requiring pointer clicks.
 
 4. **Screen Reader (VoiceOver) Integration:**
-   - The standard SwiftUI `List` used in `SessionSidebar` automatically supports VoiceOver navigation.
+   - The standard SwiftUI `List` used in `SessionSidebar` automatically supports VoiceOver navigation. Additional contextual actions (deleting sessions) use standard accessible context menus.
    - Status indicators have associated textual readouts (e.g., "Runtime Online").
+   - Explicit labels, hints, and combine groupings were added across `RuntimeStatusView`, `PromptComposer`, `ConversationView`, and `SessionSidebar`.
