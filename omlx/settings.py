@@ -829,11 +829,24 @@ class GlobalSettings:
         # Start with defaults
         settings = cls(base_path=resolved_base)
 
-        # Load from file if exists
-        settings_file = resolved_base / "settings.json"
-        if settings_file.exists():
-            settings._load_from_file(settings_file)
-            logger.debug(f"Loaded settings from {settings_file}")
+        # Check for legacy settings.json or segmented files
+        config_dir = resolved_base / "config"
+        legacy_settings_file = resolved_base / "settings.json"
+
+        if legacy_settings_file.exists():
+            settings._load_from_file(legacy_settings_file)
+            logger.info("Migrating legacy settings.json to segmented configuration files")
+            try:
+                settings.save()  # Automatically saves to segmented files
+                try:
+                    legacy_settings_file.unlink()
+                except OSError as e:
+                    logger.warning(f"Failed to delete legacy settings file: {e}")
+            except OSError as e:
+                logger.warning(f"Failed to save migrated settings: {e}")
+        elif config_dir.exists():
+            settings._load_from_segmented_files(config_dir)
+            logger.debug(f"Loaded segmented settings from {config_dir}")
 
         # Apply environment variable overrides
         settings._apply_env_overrides()
@@ -854,55 +867,69 @@ class GlobalSettings:
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
-
-            # Check version for future migrations
-            version = data.get("version", "1.0")
-            if version != SETTINGS_VERSION:
-                logger.info(
-                    f"Settings file version {version} differs from "
-                    f"current {SETTINGS_VERSION}, migrating..."
-                )
-
-            # Load each section
-            if "server" in data:
-                self.server = ServerSettings.from_dict(data["server"])
-            if "model" in data:
-                self.model = ModelSettings.from_dict(data["model"])
-            if "memory" in data:
-                self.memory = MemorySettings.from_dict(data["memory"])
-            if "scheduler" in data:
-                self.scheduler = SchedulerSettings.from_dict(data["scheduler"])
-            if "cache" in data:
-                self.cache = CacheSettings.from_dict(data["cache"])
-            if "auth" in data:
-                self.auth = AuthSettings.from_dict(data["auth"])
-            if "mcp" in data:
-                self.mcp = MCPSettings.from_dict(data["mcp"])
-            if "huggingface" in data:
-                self.huggingface = HuggingFaceSettings.from_dict(data["huggingface"])
-            if "modelscope" in data:
-                self.modelscope = ModelScopeSettings.from_dict(data["modelscope"])
-            if "network" in data:
-                self.network = NetworkSettings.from_dict(data["network"])
-            if "sampling" in data:
-                self.sampling = SamplingSettings.from_dict(data["sampling"])
-            if "logging" in data:
-                self.logging = LoggingSettings.from_dict(data["logging"])
-            if "claude_code" in data:
-                self.claude_code = ClaudeCodeSettings.from_dict(data["claude_code"])
-            if "integrations" in data:
-                self.integrations = IntegrationSettings.from_dict(data["integrations"])
-            if "ui" in data:
-                self.ui = UISettings.from_dict(data["ui"])
-            if "idle_timeout" in data:
-                self.idle_timeout = ModelIdleTimeoutSettings.from_dict(
-                    data["idle_timeout"]
-                )
-
+            self._apply_dict(data)
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse settings file {path}: {e}")
         except OSError as e:
             logger.warning(f"Failed to read settings file {path}: {e}")
+
+    def _load_from_segmented_files(self, config_dir: Path) -> None:
+        """Load settings from segmented JSON files."""
+        for filename in ["server.json", "models.json", "auth.json", "gui.json", "system.json"]:
+            path = config_dir / filename
+            if path.exists():
+                try:
+                    with open(path, encoding="utf-8") as f:
+                        data = json.load(f)
+                    self._apply_dict(data)
+                except Exception as e:
+                    logger.warning(f"Failed to load segmented settings from {path}: {e}")
+
+    def _apply_dict(self, data: dict[str, Any]) -> None:
+        """Apply a settings dictionary to this instance."""
+        # Check version for future migrations
+        version = data.get("version", "1.0")
+        if version != SETTINGS_VERSION:
+            logger.info(
+                f"Settings dictionary version {version} differs from "
+                f"current {SETTINGS_VERSION}, migrating..."
+            )
+
+        # Load each section if present
+        if "server" in data:
+            self.server = ServerSettings.from_dict(data["server"])
+        if "model" in data:
+            self.model = ModelSettings.from_dict(data["model"])
+        if "memory" in data:
+            self.memory = MemorySettings.from_dict(data["memory"])
+        if "scheduler" in data:
+            self.scheduler = SchedulerSettings.from_dict(data["scheduler"])
+        if "cache" in data:
+            self.cache = CacheSettings.from_dict(data["cache"])
+        if "auth" in data:
+            self.auth = AuthSettings.from_dict(data["auth"])
+        if "mcp" in data:
+            self.mcp = MCPSettings.from_dict(data["mcp"])
+        if "huggingface" in data:
+            self.huggingface = HuggingFaceSettings.from_dict(data["huggingface"])
+        if "modelscope" in data:
+            self.modelscope = ModelScopeSettings.from_dict(data["modelscope"])
+        if "network" in data:
+            self.network = NetworkSettings.from_dict(data["network"])
+        if "sampling" in data:
+            self.sampling = SamplingSettings.from_dict(data["sampling"])
+        if "logging" in data:
+            self.logging = LoggingSettings.from_dict(data["logging"])
+        if "claude_code" in data:
+            self.claude_code = ClaudeCodeSettings.from_dict(data["claude_code"])
+        if "integrations" in data:
+            self.integrations = IntegrationSettings.from_dict(data["integrations"])
+        if "ui" in data:
+            self.ui = UISettings.from_dict(data["ui"])
+        if "idle_timeout" in data:
+            self.idle_timeout = ModelIdleTimeoutSettings.from_dict(
+                data["idle_timeout"]
+            )
 
     def _apply_env_overrides(self) -> None:
         """Apply OMLX_* environment variable overrides."""
@@ -1142,37 +1169,49 @@ class GlobalSettings:
         return effective
 
     def save(self) -> None:
-        """Save current settings to the settings file."""
+        """Save current settings to the segmented configuration files."""
         self.ensure_directories()
 
-        settings_file = self.base_path / "settings.json"
-        data = {
-            "version": SETTINGS_VERSION,
-            "server": self.server.to_dict(),
-            "model": self.model.to_dict(),
-            "memory": self.memory.to_dict(),
-            "scheduler": self.scheduler.to_dict(),
-            "cache": self.cache.to_dict(),
-            "auth": self.auth.to_dict(),
-            "mcp": self.mcp.to_dict(),
-            "huggingface": self.huggingface.to_dict(),
-            "modelscope": self.modelscope.to_dict(),
-            "network": self.network.to_dict(),
-            "sampling": self.sampling.to_dict(),
-            "logging": self.logging.to_dict(),
-            "claude_code": self.claude_code.to_dict(),
-            "integrations": self.integrations.to_dict(),
-            "ui": self.ui.to_dict(),
-            "idle_timeout": self.idle_timeout.to_dict(),
+        config_dir = self.base_path / "config"
+        segments = {
+            "server.json": {
+                "server": self.server.to_dict()
+            },
+            "models.json": {
+                "model": self.model.to_dict()
+            },
+            "auth.json": {
+                "auth": self.auth.to_dict()
+            },
+            "gui.json": {
+                "ui": self.ui.to_dict()
+            },
+            "system.json": {
+                "version": SETTINGS_VERSION,
+                "memory": self.memory.to_dict(),
+                "scheduler": self.scheduler.to_dict(),
+                "cache": self.cache.to_dict(),
+                "mcp": self.mcp.to_dict(),
+                "huggingface": self.huggingface.to_dict(),
+                "modelscope": self.modelscope.to_dict(),
+                "network": self.network.to_dict(),
+                "sampling": self.sampling.to_dict(),
+                "logging": self.logging.to_dict(),
+                "claude_code": self.claude_code.to_dict(),
+                "integrations": self.integrations.to_dict(),
+                "idle_timeout": self.idle_timeout.to_dict(),
+            }
         }
 
-        try:
-            with open(settings_file, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-            logger.info(f"Saved settings to {settings_file}")
-        except OSError as e:
-            logger.error(f"Failed to save settings to {settings_file}: {e}")
-            raise
+        for filename, data in segments.items():
+            path = config_dir / filename
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+                logger.info(f"Saved segmented settings to {path}")
+            except OSError as e:
+                logger.error(f"Failed to save settings to {path}: {e}")
+                raise
 
     def ensure_directories(self) -> None:
         """Create necessary directories if they don't exist."""
@@ -1181,6 +1220,12 @@ class GlobalSettings:
         # Required directories - fatal if creation fails
         required = [
             self.base_path,
+            self.base_path / "config",
+            self.base_path / "runtime",
+            self.base_path / "logs",
+            self.base_path / "models",
+            self.base_path / "cache",
+            self.base_path / "keys",
             self.cache.get_ssd_cache_dir(self.base_path),
             self.logging.get_log_dir(self.base_path),
         ]

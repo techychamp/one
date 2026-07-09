@@ -374,6 +374,54 @@ def _reset_boundary_snapshots_for_server() -> None:
         logger.warning("Failed to reset boundary snapshot directory: %s", exc)
 
 
+def _publish_runtime_state():
+    import os
+    import json
+    import socket
+    from pathlib import Path
+    
+    settings = _server_state.global_settings
+    if not settings:
+        return
+    
+    host = settings.server.host or "127.0.0.1"
+    if "," in host:
+        host = host.split(",")[0].strip()
+    if host == "0.0.0.0":
+        host = "127.0.0.1"
+    port = settings.server.port or 8000
+    
+    runtime_data = {
+        "service_name": "runtime",
+        "endpoint": f"http://{host}:{port}",
+        "pid": os.getpid(),
+        "capabilities": ["chat", "embeddings", "vision", "audio"],
+        "health": "healthy"
+    }
+        
+    # Notify platform over UDS
+    socket_path = os.environ.get("OMLX_PLATFORM_SOCKET")
+    token = os.environ.get("OMLX_INTERNAL_TOKEN")
+    if socket_path and token:
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(socket_path)
+            payload = {
+                "token": token,
+                "method": "publish_event",
+                "params": {
+                    "name": "RuntimeReady",
+                    "data": runtime_data
+                }
+            }
+            sock.sendall((json.dumps(payload) + "\n").encode("utf-8"))
+            resp = sock.recv(1024).decode("utf-8").strip()
+            sock.close()
+            logger.info("Emitted RuntimeReady event to platform, response: %s", resp)
+        except Exception as e:
+            logger.error("Failed to emit RuntimeReady event over UDS: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI lifespan for startup/shutdown events."""
@@ -471,6 +519,9 @@ async def lifespan(app: FastAPI):
         mcp_config = _server_state.global_settings.mcp.config_path
     if mcp_config:
         await init_mcp(mcp_config)
+
+    # Publish our runtime state to runtime.json and register with the Control Plane
+    _publish_runtime_state()
 
     yield
 
@@ -6686,6 +6737,18 @@ Examples:
 Note: Use the omlx CLI for full feature support.
         """,
     )
+def main():
+    import argparse
+    import logging
+    import os
+    import sys
+    from pathlib import Path
+    import uvicorn
+    import mlx.core as mx
+
+    parser = argparse.ArgumentParser(
+        description="omlx: Data Plane Inference Server"
+    )
     parser.add_argument(
         "--model-dir",
         type=str,
@@ -6695,7 +6758,7 @@ Note: Use the omlx CLI for full feature support.
     parser.add_argument(
         "--host",
         type=str,
-        default="0.0.0.0",
+        default="127.0.0.1",
         help="Host to bind to",
     )
     parser.add_argument(
@@ -6713,24 +6776,80 @@ Note: Use the omlx CLI for full feature support.
 
     args = parser.parse_args()
 
-    # Set MCP config for lifespan
     if args.mcp_config:
         os.environ["OMLX_MCP_CONFIG"] = args.mcp_config
 
     from .settings import GlobalSettings
+    from .config import parse_size
+    from .logging_config import configure_file_logging
+
     settings = GlobalSettings.load(cli_args=args)
+    settings.ensure_directories()
+
+    # Configure logging
+    level_name = settings.server.log_level.upper()
+    log_level = getattr(logging, level_name, logging.INFO)
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+    # Set MLX buffer cache limit
+    total_mem = mx.device_info().get("memory_size", 0)
+    if total_mem > 0:
+        mx.set_cache_limit(total_mem)
+
+    # Bind the socket before initializing to detect port conflicts early
+    bind_hosts = [h.strip() for h in args.host.split(",") if h.strip()]
+    uvicorn_level = "debug" if settings.server.log_level == "trace" else settings.server.log_level
+    show_access_log = settings.server.log_level == "trace"
+    
+    uvicorn_config = uvicorn.Config(
+        "omlx.server:app",
+        host=bind_hosts[0],
+        port=args.port,
+        log_level=uvicorn_level,
+        access_log=show_access_log,
+    )
+    serve_sockets = [uvicorn_config.bind_socket()]
+    for h in bind_hosts[1:]:
+        extra_cfg = uvicorn.Config(
+            "omlx.server:app",
+            host=h,
+            port=args.port,
+            log_level=uvicorn_level,
+            access_log=show_access_log,
+        )
+        serve_sockets.append(extra_cfg.bind_socket())
+
+    # Build scheduler config for BatchedEngine
+    scheduler_config = settings.to_scheduler_config()
+    paged_ssd_cache_dir = str(settings.cache.get_ssd_cache_dir(settings.base_path)) if settings.cache.enabled else None
+    scheduler_config.paged_ssd_cache_dir = paged_ssd_cache_dir
+    
+    if paged_ssd_cache_dir:
+        cache_max_size_bytes = settings.cache.get_ssd_cache_max_size_bytes(settings.base_path)
+        scheduler_config.paged_ssd_cache_max_size = cache_max_size_bytes
+        scheduler_config.hot_cache_max_size = settings.cache.get_hot_cache_max_size_bytes()
+    else:
+        scheduler_config.paged_ssd_cache_max_size = 0
+        scheduler_config.hot_cache_max_size = 0
 
     # Initialize server
     init_server(
         model_dirs=[args.model_dir],
+        scheduler_config=scheduler_config,
         api_key=settings.auth.api_key,
         global_settings=settings,
     )
 
-    # Start server
-    import uvicorn
-
-    uvicorn.run(app, host=args.host, port=args.port)
+    try:
+        for h in bind_hosts:
+            print(f"Starting server at http://{h}:{args.port}")
+        uvicorn.Server(uvicorn_config).run(sockets=serve_sockets)
+    finally:
+        for sock in serve_sockets:
+            sock.close()
 
 
 if __name__ == "__main__":

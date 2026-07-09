@@ -909,14 +909,17 @@ class TestGlobalSettings:
             settings.save()
 
             # Verify file was created
-            settings_file = Path(tmpdir) / "settings.json"
-            assert settings_file.exists()
+            config_dir = Path(tmpdir) / "config"
+            assert (config_dir / "server.json").exists()
+            assert (config_dir / "auth.json").exists()
 
             # Verify content
-            data = json.loads(settings_file.read_text())
-            assert data["version"] == "1.0"
-            assert data["server"]["port"] == 9001
-            assert data["auth"]["api_key"] == "saved-key"
+            server_data = json.loads((config_dir / "server.json").read_text())
+            auth_data = json.loads((config_dir / "auth.json").read_text())
+            system_data = json.loads((config_dir / "system.json").read_text())
+            assert system_data["version"] == "1.0"
+            assert server_data["server"]["port"] == 9001
+            assert auth_data["auth"]["api_key"] == "saved-key"
 
     def test_save_and_load_cors_origins(self):
         """Test saving and loading cors_origins through settings file."""
@@ -972,7 +975,7 @@ class TestGlobalSettings:
             settings.save()
 
             assert base.exists()
-            assert (base / "settings.json").exists()
+            assert (base / "config" / "server.json").exists()
 
     def test_ensure_directories(self):
         """Test directory creation."""

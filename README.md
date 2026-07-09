@@ -404,3 +404,4 @@ Contributions are welcome! See [Contributing Guide](docs/CONTRIBUTING.md) for de
 - [venvstacks](https://venvstacks.lmstudio.ai) - Portable Python environment layering for the macOS app bundle
 - [mlx-embeddings](https://github.com/Blaizzy/mlx-embeddings) - Embedding model support for Apple Silicon
 - [dflash-mlx](https://github.com/bstnxbt/dflash-mlx) - Block diffusion speculative decoding on Apple Silicon
+

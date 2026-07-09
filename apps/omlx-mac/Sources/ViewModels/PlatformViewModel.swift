@@ -6,6 +6,7 @@ import SwiftUI
 final class PlatformViewModel {
     private let service: PlatformServiceProtocol
     private let sessionService: SessionServiceProtocol
+
     
     var status: RuntimeStatus?
     var capabilities: CapabilityReport?

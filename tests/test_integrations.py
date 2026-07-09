@@ -64,7 +64,7 @@ class TestIntegrationCommands:
             return_value="/Users/me/My Apps/One.app/Contents/MacOS/one-cli",
         ):
             integration = get_integration("claude")
-            cmd = integration.get_command(model="claude-3-5-sonnet")
+            cmd = integration.get_command(ctx())
             assert (
                 cmd == "'/Users/me/My Apps/One.app/Contents/MacOS/one-cli' launch claude"
             )
