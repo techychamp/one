@@ -6,8 +6,7 @@ struct LoadingView: View {
     
     var body: some View {
         VStack(spacing: 12) {
-            ProgressView()
-                .controlSize(.regular)
+            ProgressIndicator(.orbital, state: .indeterminate)
             Text(title)
                 .font(.body)
                 .foregroundColor(theme.textSecondary)
