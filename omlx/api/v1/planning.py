@@ -25,9 +25,7 @@ class PlanningClient:
 
     def generate_bundle(self, request: PlanningRequest) -> PlanningBundle:
         """Generate a complete PlanningBundle for a request."""
-        # This is a stub implementation for the API layer
-        return PlanningBundle(
-            execution_plan=ExecutionPlan(),
+        raise NotImplementedError("PlanningClient generation is not fully integrated yet."),
             device_plan=None,
             cache_plan=None,
             memory_plan=None,
