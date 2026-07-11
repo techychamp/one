@@ -14,7 +14,7 @@ class ModelDescriptor:
     """
     Immutable canonical representation of a model.
     """
-    model_id: str
+    model_id: str = ""
     model_family: str = ""
     architecture: str = ""
     architecture_family: str = ""
@@ -28,8 +28,8 @@ class ModelDescriptor:
     attention_type: str = ""
     activation_type: str = ""
     tokenizer_family: str = ""
-    special_token_information: MappingProxyType[str, Any] = field(default_factory=dict)
-    moe_information: MappingProxyType[str, Any] = field(default_factory=dict)
+    special_token_information: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    moe_information: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     expert_count: int = 0
     expert_size: int = 0
     kv_cache_support: bool = False
@@ -44,15 +44,15 @@ class ModelDescriptor:
     quantization_support: bool = False
     backend_requirements: Tuple[str, ...] = field(default_factory=tuple)
     license: str = ""
-    repository_metadata: MappingProxyType[str, Any] = field(default_factory=dict)
+    repository_metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     recommended_backend: str = ""
     recommended_quantization: str = ""
     recommended_execution_mode: str = ""
     recommended_scheduler: str = ""
-    compatibility_report: MappingProxyType[str, Any] = field(default_factory=dict)
-    validation_report: MappingProxyType[str, Any] = field(default_factory=dict)
-    planner_metadata: MappingProxyType[str, Any] = field(default_factory=dict)
-    compiler_metadata: MappingProxyType[str, Any] = field(default_factory=dict)
+    compatibility_report: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    validation_report: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    planner_metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    compiler_metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
 
     def __post_init__(self):
         # Enforce strict immutability types for collections

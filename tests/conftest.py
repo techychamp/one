@@ -178,31 +178,25 @@ def real_model_dir() -> Path:
     """
     return Path.home() / "Workspace" / "models"
 
-
-@pytest.fixture(scope="function", autouse=True)
-def clean_sys_modules_fixture():
-    import sys
-    sys_modules_snapshot = dict(sys.modules)
+import sys
+import importlib
+@pytest.fixture(autouse=True)
+def cleanup_mlx_cache():
     yield
-    for key in list(sys.modules.keys()):
-        if key not in sys_modules_snapshot:
-            del sys.modules[key]
-    for key, value in sys_modules_snapshot.items():
-        sys.modules[key] = value
-
-
-@pytest.fixture(scope="function", autouse=True)
-def clear_mlx_allocator_and_registry_fixture():
-    yield
+    # STABILIZE-001-01 Fix: Clear singleton caches to avoid cross-test state leakage
     try:
-        import mlx.core as mx
-        mx.synchronize()
-        mx.clear_cache()
-    except (ImportError, AttributeError):
+        from mlx.core import metal
+        metal.clear_cache()
+    except Exception:
         pass
 
-    try:
-        from omlx.model_registry import get_registry
-        get_registry().clear()
-    except (ImportError, AttributeError):
-        pass
+    # Reload server to reset state
+    if "omlx.server" in sys.modules:
+        importlib.reload(sys.modules["omlx.server"])
+
+    # Clean up model registries
+    if "omlx.framework.model_intelligence.registry" in sys.modules:
+        importlib.reload(sys.modules["omlx.framework.model_intelligence.registry"])
+
+    if "omlx.framework.quantization.registry" in sys.modules:
+        importlib.reload(sys.modules["omlx.framework.quantization.registry"])

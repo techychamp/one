@@ -34,7 +34,7 @@ class QuantizationDescriptor:
     packing_information: Optional[str] = None
     layout_information: Optional[str] = None
     alignment_information: Optional[str] = None
-    compression_metadata: MappingProxyType[str, Any] = field(default_factory=dict)
+    compression_metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     compression_ratio: Optional[float] = None
     estimated_memory_usage: Optional[int] = None
     estimated_bandwidth_usage: Optional[int] = None
@@ -45,10 +45,10 @@ class QuantizationDescriptor:
     conversion_compatibility: Tuple[str, ...] = field(default_factory=tuple)
     performance_class: PerformanceClass = PerformanceClass.UNKNOWN
     validation_status: ValidationStatus = ValidationStatus.UNKNOWN
-    metadata: MappingProxyType[str, Any] = field(default_factory=dict)
-    planner_metadata: MappingProxyType[str, Any] = field(default_factory=dict)
-    compiler_metadata: MappingProxyType[str, Any] = field(default_factory=dict)
-    backend_metadata: MappingProxyType[str, Any] = field(default_factory=dict)
+    metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    planner_metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    compiler_metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    backend_metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
 
     def __post_init__(self):
         # Enforce strict immutability types for collections
