@@ -32,7 +32,7 @@ Instead of binding applications to a single inference engine, One introduces a p
 
 ---
 
-# Why the Rename? (Formerly oMLX)
+# Why the Rename?
 
 **One** is the evolution of **oMLX**.
 
