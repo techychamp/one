@@ -1,22 +1,21 @@
 from dataclasses import dataclass, field, asdict
 from typing import Dict, Any, List, Optional
-from omlx.compiler.operators.base import Operator
 
 @dataclass
 class Node:
     id: str
-    operator: Operator
+    type: str
+    inputs: List[str] = field(default_factory=list)
+    outputs: List[str] = field(default_factory=list)
+    parameters: Dict[str, Any] = field(default_factory=dict)
+    attributes: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "id": self.id,
-            "operator_name": self.operator.name,
-            "operator_type": self.operator.__class__.__name__,
-            "inputs": self.operator.inputs,
-            "outputs": self.operator.outputs,
-            "parameters": self.operator.parameters,
-            "attributes": self.operator.attributes
-        }
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Node':
+        return cls(**data)
 
 @dataclass
 class Edge:
@@ -26,3 +25,7 @@ class Edge:
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Edge':
+        return cls(**data)

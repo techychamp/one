@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
+from omlx.compiler.artifacts import CompilerArtifact
 from omlx.compiler.cmr.models import CanonicalModelRepresentation
 from omlx.compiler.graph.builder import Graph
 
 class BaseImporter(ABC):
     @abstractmethod
-    def build_cmr(self, model_path: str) -> CanonicalModelRepresentation:
+    def build_cmr(self, model_path: str, artifact: CompilerArtifact = None) -> CanonicalModelRepresentation:
         pass
 
     @abstractmethod

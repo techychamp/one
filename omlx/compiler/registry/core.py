@@ -27,8 +27,28 @@ class Registry:
     def list_all(self) -> Dict[str, Any]:
         return self._registry.copy()
 
-architecture_registry = Registry("architecture")
-operator_registry = Registry("operator")
-quantization_registry = Registry("quantization")
-tokenizer_registry = Registry("tokenizer")
-capability_registry = Registry("capability")
+class ArchitectureRegistry(Registry):
+    def __init__(self):
+        super().__init__("architecture")
+
+class OperatorRegistry(Registry):
+    def __init__(self):
+        super().__init__("operator")
+
+class ImporterRegistry(Registry):
+    def __init__(self):
+        super().__init__("importer")
+
+class ProviderRegistry(Registry):
+    def __init__(self):
+        super().__init__("provider")
+
+class OptimizationRegistry(Registry):
+    def __init__(self):
+        super().__init__("optimization")
+
+architecture_registry = ArchitectureRegistry()
+operator_registry = OperatorRegistry()
+importer_registry = ImporterRegistry()
+provider_registry = ProviderRegistry()
+optimization_registry = OptimizationRegistry()

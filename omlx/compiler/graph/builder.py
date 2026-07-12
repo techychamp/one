@@ -1,14 +1,26 @@
 from typing import Dict, List, Set, Any
 from omlx.compiler.ir.core import Node, Edge
+from omlx.compiler.artifacts import CompilerArtifact
 
-class Graph:
-    def __init__(self):
+class Graph(CompilerArtifact):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.graph_version: int = 1
         self.nodes: Dict[str, Node] = {}
         self.edges: List[Edge] = []
+        self._type_counters: Dict[str, int] = {}
+
+    def generate_id(self, node_type: str) -> str:
+        count = self._type_counters.get(node_type, 0) + 1
+        self._type_counters[node_type] = count
+        return f"{node_type}_{count:03d}"
 
     def add_node(self, node: Node):
-        if node.id in self.nodes:
+        if not node.id:
+            node.id = self.generate_id(node.type)
+        elif node.id in self.nodes:
             raise ValueError(f"Node {node.id} already exists")
+
         self.nodes[node.id] = node
 
     def add_edge(self, edge: Edge):
@@ -50,6 +62,12 @@ class Graph:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "version": self.version,
+            "generator": self.generator,
+            "hash": self.hash,
+            "created_at": self.created_at,
+            "compiler_version": self.compiler_version,
+            "graph_version": self.graph_version,
             "nodes": [node.to_dict() for node in self.nodes.values()],
             "edges": [edge.to_dict() for edge in self.edges]
         }

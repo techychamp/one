@@ -1,17 +1,13 @@
 from omlx.compiler.graph.builder import Graph
 from omlx.compiler.ir.core import Node, Edge
-from omlx.compiler.operators.standard import Attention
 from omlx.compiler.cmr.models import CanonicalModelRepresentation
 from omlx.compiler.validation.validator import GraphValidator
 
 def test_graph_validation_cycle():
     graph = Graph()
 
-    op1 = Attention(name="attn1", inputs=["x"], outputs=["y"])
-    node1 = Node(id="n1", operator=op1)
-
-    op2 = Attention(name="attn2", inputs=["y"], outputs=["x"])
-    node2 = Node(id="n2", operator=op2)
+    node1 = Node(id="n1", type="Attention", inputs=["x"], outputs=["y"])
+    node2 = Node(id="n2", type="Attention", inputs=["y"], outputs=["x"])
 
     graph.add_node(node1)
     graph.add_node(node2)
